@@ -211,10 +211,31 @@
 </div>
 
 <script>
-  const API_BASE_URL = 'https://dispatch-board-fues.onrender.com'; // Render URL
+  const API_BASE_URL = '__API_BASE_URL__'; // Replaced by GitHub Actions
   let currentState = null;
   let isItemsTyping = false;
   let activeDropdownSelections = {}; // To preserve dropdown state
+
+  function getAdminPassword() {
+    let pwd = sessionStorage.getItem('adminPassword');
+    if (!pwd) {
+      pwd = prompt("Enter Admin Password:");
+      if (pwd) sessionStorage.setItem('adminPassword', pwd);
+    }
+    return pwd || '';
+  }
+
+  async function apiFetch(path, options = {}) {
+    const headers = { ...options.headers, 'x-admin-password': getAdminPassword() };
+    const res = await fetch(API_BASE_URL + path, { ...options, headers });
+    if (res.status === 401) {
+      sessionStorage.removeItem('adminPassword');
+      alert("Invalid or missing admin password. Please try again.");
+      window.location.reload();
+      throw new Error("Unauthorized");
+    }
+    return res;
+  }
 
   const textarea = document.getElementById('bulkItemsTextarea');
   
@@ -284,7 +305,7 @@
 
   async function fetchState() {
     try {
-      const res = await fetch(API_BASE_URL + '/api/state');
+      const res = await apiFetch('/api/state');
       currentState = await res.json();
       render();
     } catch(err) {
@@ -295,7 +316,7 @@
   async function saveBulkItems() {
     const text = textarea.value;
     const items = text.split('\n');
-    await fetch(API_BASE_URL + '/api/items/bulk', {
+    await apiFetch('/api/items/bulk', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ items })
@@ -312,7 +333,7 @@
   async function addTeam() {
     const nextId = Object.keys(currentState.teams || {}).length + 1;
     const name = `Team ${nextId}`;
-    await fetch(API_BASE_URL + '/api/teams', {
+    await apiFetch('/api/teams', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name })
@@ -328,7 +349,7 @@
     const teamToRemove = currentState.teams[highestId];
     
     if (teamToRemove) {
-      await fetch(API_BASE_URL + `/api/teams/${teamToRemove._id}`, { method: 'DELETE' });
+      await apiFetch(`/api/teams/${teamToRemove._id}`, { method: 'DELETE' });
       fetchState();
     }
   }
@@ -338,7 +359,7 @@
       render(); // revert to old name if invalid
       return;
     }
-    await fetch(API_BASE_URL + `/api/teams/${id}`, {
+    await apiFetch(`/api/teams/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: newName.trim() })
@@ -358,7 +379,7 @@
       itemText = availableItems[randomIndex];
     }
     
-    await fetch(API_BASE_URL + '/api/send', {
+    await apiFetch('/api/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ teamId, item: itemText })
@@ -372,7 +393,7 @@
 
   async function resetAll() {
     if (!confirm('Are you sure you want to clear items for all teams?')) return;
-    await fetch(API_BASE_URL + '/api/reset', { method: 'POST' });
+    await apiFetch('/api/reset', { method: 'POST' });
     fetchState();
   }
 

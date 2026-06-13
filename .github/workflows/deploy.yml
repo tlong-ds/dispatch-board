@@ -25,6 +25,13 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v4
+      - name: Inject API_BASE_URL
+        run: |
+          if [ -n "${{ secrets.API_BASE_URL }}" ]; then
+            sed -i "s|__API_BASE_URL__|${{ secrets.API_BASE_URL }}|g" public/*.html
+          else
+            echo "API_BASE_URL secret not set. Skipping replacement."
+          fi
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

@@ -1,0 +1,16 @@
+name: Keep Render Awake
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping API
+        if: env.API_URL != ''
+        env:
+          API_URL: ${{ secrets.API_BASE_URL }}
+        run: curl -s "${API_URL}/api/ping"

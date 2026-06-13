@@ -87,8 +87,27 @@ async function seedDataIfNeeded() {
 
 // API Routes
 
+// Keep-alive ping route
+app.get('/api/ping', (req, res) => {
+  res.send('pong');
+});
+
+// Admin authentication middleware
+const requireAdmin = (req, res, next) => {
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminPassword) {
+    return next(); // If no password is set on server, allow access
+  }
+  const providedPassword = req.headers['x-admin-password'];
+  if (providedPassword === adminPassword) {
+    next();
+  } else {
+    res.status(401).json({ error: 'Unauthorized' });
+  }
+};
+
 // GET all state
-app.get('/api/state', async (req, res) => {
+app.get('/api/state', requireAdmin, async (req, res) => {
   try {
     const [itemsDocs, teamsDocs] = await Promise.all([
       Item.find(),
@@ -115,7 +134,7 @@ app.get('/api/state', async (req, res) => {
 });
 
 // POST items bulk update
-app.post('/api/items/bulk', async (req, res) => {
+app.post('/api/items/bulk', requireAdmin, async (req, res) => {
   try {
     const { items } = req.body;
     if (!Array.isArray(items)) return res.status(400).json({ error: 'Array required' });
@@ -149,7 +168,7 @@ app.post('/api/items/bulk', async (req, res) => {
 });
 
 // POST new team
-app.post('/api/teams', async (req, res) => {
+app.post('/api/teams', requireAdmin, async (req, res) => {
   try {
     const { name } = req.body;
     if (!name) return res.status(400).json({ error: 'Name required' });
@@ -170,7 +189,7 @@ app.post('/api/teams', async (req, res) => {
 });
 
 // PUT update team
-app.put('/api/teams/:id', async (req, res) => {
+app.put('/api/teams/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { name } = req.body;
@@ -182,7 +201,7 @@ app.put('/api/teams/:id', async (req, res) => {
 });
 
 // DELETE team
-app.delete('/api/teams/:id', async (req, res) => {
+app.delete('/api/teams/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     await Team.findByIdAndDelete(id);
@@ -193,7 +212,7 @@ app.delete('/api/teams/:id', async (req, res) => {
 });
 
 // POST send item to team
-app.post('/api/send', async (req, res) => {
+app.post('/api/send', requireAdmin, async (req, res) => {
   try {
     const { teamId, item } = req.body;
     
@@ -236,7 +255,7 @@ app.get('/api/team/:id', async (req, res) => {
 });
 
 // POST reset all teams
-app.post('/api/reset', async (req, res) => {
+app.post('/api/reset', requireAdmin, async (req, res) => {
   try {
     await Team.updateMany({}, { currentItem: null, sentAt: null });
     res.json({ success: true });
