@@ -219,12 +219,26 @@
 
 <div class="team-badge" id="teamBadge">Loading Team...</div>
 
+<div id="audioOverlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 10000; display: flex; align-items: center; justify-content: center; color: #00FFCC; cursor: pointer; text-align: center; line-height: 1.5;" onclick="enableAudio()">
+  <div>
+    <div style="font-size: 2rem; margin-bottom: 1rem;">CLICK TO JOIN</div>
+    <div style="font-size: 0.8rem; color: #fff;">Enables live updates & sound</div>
+  </div>
+</div>
+
 <div class="container">
   <div class="status" id="status">Waiting for your item...</div>
   <div class="item-display" id="itemDisplay"></div>
 </div>
 
 <script>
+  function enableAudio() {
+    document.getElementById('audioOverlay').style.display = 'none';
+    if (window.AudioFX) {
+      window.AudioFX.playClick();
+    }
+  }
+
   const API_BASE_URL = '__API_BASE_URL__'.startsWith('__') ? 'http://localhost:3000' : '__API_BASE_URL__'; // Replaced by GitHub Actions
 
   const urlParams = new URLSearchParams(window.location.search);
