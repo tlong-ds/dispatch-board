@@ -33,7 +33,8 @@ const teamSchema = new mongoose.Schema({
   hashId: { type: String, required: true, unique: true, default: () => crypto.randomBytes(4).toString('hex') },
   name: { type: String, required: true },
   currentItem: { type: String, default: null },
-  sentAt: { type: Date, default: null }
+  sentAt: { type: Date, default: null },
+  score: { type: Number, default: 0 }
 });
 const Team = mongoose.model('Team', teamSchema);
 
@@ -123,7 +124,8 @@ app.get('/api/state', requireAdmin, async (req, res) => {
         hashId: t.hashId,
         name: t.name,
         item: t.currentItem,
-        sentAt: t.sentAt
+        sentAt: t.sentAt,
+        score: t.score || 0
       };
     }
     
@@ -234,6 +236,23 @@ app.post('/api/send', requireAdmin, async (req, res) => {
   }
 });
 
+// POST update team score
+app.post('/api/score', requireAdmin, async (req, res) => {
+  try {
+    const { teamId, delta } = req.body;
+    
+    const team = await Team.findOne({ teamId: Number(teamId) });
+    if (!team) return res.status(404).json({ error: 'Team not found' });
+
+    team.score = (team.score || 0) + Number(delta);
+    await team.save();
+    
+    res.json({ success: true, score: team.score });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET specific team
 app.get('/api/team/:id', async (req, res) => {
   try {
@@ -254,7 +273,7 @@ app.get('/api/team/:id', async (req, res) => {
 // POST reset all teams
 app.post('/api/reset', requireAdmin, async (req, res) => {
   try {
-    await Team.updateMany({}, { currentItem: null, sentAt: null });
+    await Team.updateMany({}, { currentItem: null, sentAt: null, score: 0 });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -262,6 +281,10 @@ app.post('/api/reset', requireAdmin, async (req, res) => {
 });
 
 // Fallback routing for HTML pages
+app.get('/scoreboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'scoreboard.html'));
+});
+
 app.get('/host', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'host.html'));
 });
