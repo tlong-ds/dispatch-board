@@ -38,13 +38,24 @@ const teamSchema = new mongoose.Schema({
 });
 const Team = mongoose.model('Team', teamSchema);
 
+const gameStateSchema = new mongoose.Schema({
+  singleton: { type: String, default: 'STATE', unique: true },
+  timerIsRunning: { type: Boolean, default: false },
+  timerEndTime: { type: Date, default: null },
+  timerRemaining: { type: Number, default: 300 }
+});
+const GameState = mongoose.model('GameState', gameStateSchema);
+
 // Initial Seed & Migration Logic
 async function seedDataIfNeeded() {
   try {
-    const [wordCount, teamCount] = await Promise.all([
+    const [wordCount, teamCount, stateCount] = await Promise.all([
       Item.countDocuments(),
-      Team.countDocuments()
+      Team.countDocuments(),
+      GameState.countDocuments()
     ]);
+    
+    await GameState.updateOne({ singleton: 'STATE' }, { $setOnInsert: { timerRemaining: 300 } }, { upsert: true });
     
     // Migrate existing teams to have a hashId if they don't
     const teamsWithoutHash = await Team.find({ hashId: { $exists: false } });
@@ -110,16 +121,17 @@ const requireAdmin = (req, res, next) => {
 // GET all state
 app.get('/api/state', requireAdmin, async (req, res) => {
   try {
-    const [itemsDocs, teamsDocs] = await Promise.all([
+    const [itemsDocs, teamsDocs, stateDoc] = await Promise.all([
       Item.find(),
-      Team.find().sort({ teamId: 1 })
+      Team.find().sort({ teamId: 1 }),
+      GameState.findOne({ singleton: 'STATE' })
     ]);
     
     const items = itemsDocs.map(w => w.text);
 
     const teams = {};
     for (const t of teamsDocs) {
-      teams[t.teamId] = {
+      teams[t._id] = {
         _id: t._id,
         hashId: t.hashId,
         name: t.name,
@@ -129,7 +141,13 @@ app.get('/api/state', requireAdmin, async (req, res) => {
       };
     }
     
-    res.json({ items, teams });
+    const timer = stateDoc ? {
+      isRunning: stateDoc.timerIsRunning,
+      endTime: stateDoc.timerEndTime,
+      remaining: stateDoc.timerRemaining
+    } : null;
+
+    res.json({ items, teams, timer });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -218,8 +236,17 @@ app.post('/api/send', requireAdmin, async (req, res) => {
   try {
     const { teamId, item } = req.body;
     
+    const isMongoId = mongoose.Types.ObjectId.isValid(teamId) && (String(new mongoose.Types.ObjectId(teamId)) === String(teamId));
+    
+    let teamPromise;
+    if (isMongoId) {
+      teamPromise = Team.findById(teamId);
+    } else {
+      teamPromise = Team.findOne({ hashId: String(teamId) }).then(t => t || (!isNaN(Number(teamId)) ? Team.findOne({ teamId: Number(teamId) }) : null));
+    }
+    
     const [team, itemExists] = await Promise.all([
-      Team.findOne({ teamId: Number(teamId) }),
+      teamPromise,
       Item.findOne({ text: item })
     ]);
     
@@ -241,7 +268,19 @@ app.post('/api/score', requireAdmin, async (req, res) => {
   try {
     const { teamId, delta } = req.body;
     
-    const team = await Team.findOne({ teamId: Number(teamId) });
+    const isMongoId = mongoose.Types.ObjectId.isValid(teamId) && (String(new mongoose.Types.ObjectId(teamId)) === String(teamId));
+    
+    let team;
+    if (isMongoId) {
+      team = await Team.findById(teamId);
+    }
+    if (!team) {
+      team = await Team.findOne({ hashId: String(teamId) });
+    }
+    if (!team && !isNaN(Number(teamId))) {
+      team = await Team.findOne({ teamId: Number(teamId) });
+    }
+    
     if (!team) return res.status(404).json({ error: 'Team not found' });
 
     team.score = (team.score || 0) + Number(delta);
@@ -270,11 +309,67 @@ app.get('/api/team/:id', async (req, res) => {
   }
 });
 
-// POST reset all teams
+// POST reset all teams (items and scores)
 app.post('/api/reset', requireAdmin, async (req, res) => {
   try {
     await Team.updateMany({}, { currentItem: null, sentAt: null, score: 0 });
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST reset only scores
+app.post('/api/reset_scores', requireAdmin, async (req, res) => {
+  try {
+    await Team.updateMany({}, { score: 0 });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST control timer
+app.post('/api/timer', requireAdmin, async (req, res) => {
+  try {
+    const { action, value } = req.body;
+    let state = await GameState.findOne({ singleton: 'STATE' });
+    if (!state) {
+      state = new GameState();
+    }
+
+    if (action === 'start') {
+      if (!state.timerIsRunning) {
+        state.timerIsRunning = true;
+        // Calculate new end time based on remaining
+        state.timerEndTime = new Date(Date.now() + (state.timerRemaining * 1000));
+      }
+    } else if (action === 'pause') {
+      if (state.timerIsRunning) {
+        state.timerIsRunning = false;
+        // Calculate remaining time
+        if (state.timerEndTime) {
+          const rem = Math.max(0, Math.floor((state.timerEndTime.getTime() - Date.now()) / 1000));
+          state.timerRemaining = rem;
+        }
+      }
+    } else if (action === 'reset') {
+      state.timerIsRunning = false;
+      state.timerRemaining = 300;
+      state.timerEndTime = null;
+    } else if (action === 'set') {
+      const newSecs = parseInt(value, 10);
+      if (!isNaN(newSecs) && newSecs >= 0) {
+        if (state.timerIsRunning) {
+          state.timerEndTime = new Date(Date.now() + (newSecs * 1000));
+        } else {
+          state.timerRemaining = newSecs;
+        }
+      }
+    }
+
+    await state.save();
+    res.json({ success: true, timer: { isRunning: state.timerIsRunning, endTime: state.timerEndTime, remaining: state.timerRemaining } });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

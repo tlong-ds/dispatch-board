@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Scoreboard - Item Dispatch</title>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
   <style>
     @font-face {
       font-family: 'PressStart2P';
@@ -13,6 +14,7 @@
       --text: #535454;
       --primary: #535454;
       --success: #535454;
+      --danger: #EF4444;
     }
     body {
       margin: 0;
@@ -297,7 +299,8 @@
 
 <header>
   <h1>Dispatch Scoreboard</h1>
-  <div>
+  <div style="display: flex; gap: 1rem;">
+    <button class="btn btn-primary" style="background: #EF4444; color: white;" onclick="resetScores()">RESET SCORES</button>
     <button class="btn btn-primary" onclick="window.close()">BACK</button>
   </div>
 </header>
@@ -306,7 +309,7 @@
   
   <div style="background: white; border: 4px solid var(--text); padding: 1.5rem; margin-bottom: 2rem; display: flex; flex-direction: column; align-items: center; box-shadow: 6px 6px 0px var(--text); z-index: 10; position: relative;">
     <h2 style="margin: 0 0 1rem 0;">COUNTDOWN</h2>
-    <div id="timerDisplay" style="font-size: 3rem; margin-bottom: 1rem;">05:00</div>
+    <input type="text" id="timerDisplay" value="05:00" onfocus="startEditTimer()" onblur="finishEditTimer(this.value)" onkeydown="if(event.key === 'Enter') this.blur()" style="font-size: 3rem; margin-bottom: 1rem; cursor: pointer; border: none; background: transparent; text-align: center; color: var(--text); outline: none; font-family: 'PressStart2P', system-ui, sans-serif; width: 250px;" title="Click to edit timer">
     <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
       <button class="btn" style="background: var(--primary); color: white;" onclick="startTimer()">START</button>
       <button class="btn" style="background: #FBBF24; color: black;" onclick="pauseTimer()">PAUSE</button>
@@ -325,48 +328,94 @@
 </div>
 
 <!-- Graffiti Modal -->
-<div id="graffitiModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center; flex-direction: column;">
-  <div id="winnerName" style="font-size: 4rem; color: #FF0055; text-shadow: 4px 4px 0 #00FFCC, -2px -2px 0 #FFEB3B, 0 0 20px #FF0055; transform: rotate(-5deg); margin-bottom: 2rem; text-align: center; line-height: 1.2;">
+<div id="graffitiModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; flex-direction: column;">
+  <canvas id="confettiCanvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10000; pointer-events: none;"></canvas>
+  <div id="winnerName" style="position: relative; z-index: 10001; font-size: 4rem; color: #FF0055; text-shadow: 4px 4px 0 #00FFCC, -2px -2px 0 #FFEB3B, 0 0 20px #FF0055; transform: rotate(-5deg); margin-bottom: 2rem; text-align: center; line-height: 1.2;">
     TEAM WINS!
   </div>
-  <button class="btn btn-primary" onclick="closeModal()">CONTINUE</button>
+  <button class="btn btn-primary" onclick="closeModal()" style="position: relative; z-index: 10001;">CONTINUE</button>
 </div>
 
 <script>
   let teamsData = {};
   
   // Timer State
-  let timerInterval;
-  let timeLeft = 300; // 5 minutes default
-  let timerRunning = false;
+  let timerInterval = null;
+  let serverTimer = { isRunning: false, endTime: null, remaining: 300 };
+  let isEditingTimer = false;
 
   function updateTimerDisplay() {
+    if (isEditingTimer) return;
+    
+    let timeLeft = 0;
+    if (serverTimer.isRunning && serverTimer.endTime) {
+      timeLeft = Math.max(0, Math.floor((new Date(serverTimer.endTime).getTime() - Date.now()) / 1000));
+    } else {
+      timeLeft = serverTimer.remaining || 0;
+    }
+    
     const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
     const s = (timeLeft % 60).toString().padStart(2, '0');
-    document.getElementById('timerDisplay').innerText = `${m}:${s}`;
+    document.getElementById('timerDisplay').value = `${m}:${s}`;
+  }
+
+  function tick() {
+    if (serverTimer.isRunning) {
+      updateTimerDisplay();
+    }
+  }
+
+  setInterval(tick, 1000);
+
+  async function timerCommand(action, value = null) {
+    try {
+      const res = await apiFetch('/api/timer', {
+        method: 'POST',
+        body: JSON.stringify({ action, value })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        serverTimer = data.timer;
+        updateTimerDisplay();
+      }
+    } catch (err) {
+      console.error('Timer command failed:', err);
+    }
   }
 
   function startTimer() {
-    if (timerRunning) return;
-    timerRunning = true;
-    timerInterval = setInterval(() => {
-      if (timeLeft > 0) {
-        timeLeft--;
-        updateTimerDisplay();
-      } else {
-        pauseTimer();
-      }
-    }, 1000);
+    timerCommand('start');
   }
 
   function pauseTimer() {
-    timerRunning = false;
-    clearInterval(timerInterval);
+    timerCommand('pause');
   }
 
   function resetTimer() {
-    pauseTimer();
-    timeLeft = 300;
+    timerCommand('reset');
+  }
+
+  function startEditTimer() {
+    isEditingTimer = true;
+  }
+
+  function finishEditTimer(newTime) {
+    isEditingTimer = false;
+    if (newTime && newTime.trim() !== '') {
+      let parsed = 0;
+      if (newTime.includes(':')) {
+        const parts = newTime.split(':');
+        parsed = parseInt(parts[0] || '0', 10) * 60 + parseInt(parts[1] || '0', 10);
+      } else {
+        parsed = parseInt(newTime, 10);
+      }
+      if (!isNaN(parsed) && parsed >= 0) {
+        timerCommand('set', parsed);
+        return;
+      } else {
+        alert("Invalid time format. Use MM:SS or seconds.");
+      }
+    }
     updateTimerDisplay();
   }
 
@@ -374,15 +423,109 @@
     document.getElementById('graffitiModal').style.display = 'none';
   }
 
+  function playVictorySound() {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      function playTone(freq, startTime, duration) {
+        // Oscillator 1 (Square wave for classic 8-bit sound)
+        const osc1 = audioCtx.createOscillator();
+        osc1.type = 'square';
+        osc1.frequency.value = freq;
+        
+        // Oscillator 2 (Sawtooth wave, one octave lower for a fatter retro synth feel)
+        const osc2 = audioCtx.createOscillator();
+        osc2.type = 'sawtooth';
+        osc2.frequency.value = freq / 2;
+        
+        const gain = audioCtx.createGain();
+        // Envelope to prevent clicking
+        gain.gain.setValueAtTime(0.0, audioCtx.currentTime + startTime);
+        gain.gain.linearRampToValueAtTime(0.12, audioCtx.currentTime + startTime + 0.02);
+        gain.gain.setValueAtTime(0.12, audioCtx.currentTime + startTime + duration - 0.05);
+        gain.gain.linearRampToValueAtTime(0.0, audioCtx.currentTime + startTime + duration);
+        
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        osc1.start(audioCtx.currentTime + startTime);
+        osc2.start(audioCtx.currentTime + startTime);
+        osc1.stop(audioCtx.currentTime + startTime + duration);
+        osc2.stop(audioCtx.currentTime + startTime + duration);
+      }
+
+      // Part 1: The classic intro
+      playTone(523.25, 0.00, 0.12); // C5
+      playTone(523.25, 0.12, 0.12); // C5
+      playTone(523.25, 0.24, 0.12); // C5
+      playTone(523.25, 0.36, 0.40); // C5 
+      
+      playTone(392.00, 0.76, 0.40); // G4
+      playTone(466.16, 1.16, 0.40); // Bb4
+      
+      playTone(523.25, 1.56, 0.15); // C5
+      playTone(466.16, 1.71, 0.15); // Bb4
+      playTone(523.25, 1.86, 0.80); // C5
+      
+      // Part 2: The triumphant continuation
+      playTone(659.25, 2.70, 0.20); // E5
+      playTone(698.46, 2.90, 0.20); // F5
+      playTone(783.99, 3.10, 0.40); // G5
+      playTone(523.25, 3.50, 0.40); // C5
+      
+      playTone(659.25, 3.90, 0.20); // E5
+      playTone(698.46, 4.10, 0.20); // F5
+      playTone(783.99, 4.30, 0.40); // G5
+      playTone(1046.50, 4.70, 1.20); // C6 (Big finish!)
+    } catch (e) {
+      console.log("Audio not supported or blocked", e);
+    }
+  }
+
   function checkWinner() {
     const threshold = parseInt(document.getElementById('winThreshold').value, 10);
     for (const id in teamsData) {
       if (teamsData[id].score >= threshold) {
-        document.getElementById('winnerName').innerText = `${teamsData[id].name}
-WINS!`;
-        document.getElementById('graffitiModal').style.display = 'flex';
+        const modal = document.getElementById('graffitiModal');
+        if (modal.style.display === 'none' || modal.style.display === '') {
+          document.getElementById('winnerName').innerText = `${teamsData[id].name}\nWINS!`;
+          modal.style.display = 'flex';
+          fireConfetti();
+          playVictorySound();
+        }
         break; // Only show one winner at a time
       }
+    }
+  }
+
+  function fireConfetti() {
+    if (typeof confetti === 'function') {
+      var myCanvas = document.getElementById('confettiCanvas');
+      var myConfetti = confetti.create(myCanvas, { resize: true, useWorker: true });
+
+      var duration = 3000;
+      var end = Date.now() + duration;
+
+      (function frame() {
+        myConfetti({
+          particleCount: 5,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0 },
+          colors: ['#FF0055', '#00FFCC', '#FFEB3B', '#10B981']
+        });
+        myConfetti({
+          particleCount: 5,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1 },
+          colors: ['#FF0055', '#00FFCC', '#FFEB3B', '#10B981']
+        });
+
+        if (Date.now() < end) {
+          requestAnimationFrame(frame);
+        }
+      }());
     }
   }
 
@@ -392,7 +535,7 @@ WINS!`;
     const password = localStorage.getItem('adminPassword') || '';
     const headers = { 'Content-Type': 'application/json' };
     if (password) headers['x-admin-password'] = password;
-    return fetch(API_BASE_URL + url, { ...options, headers });
+    return fetch(API_BASE_URL + url, { cache: 'no-store', ...options, headers });
   }
 
   async function fetchState() {
@@ -408,6 +551,10 @@ WINS!`;
       }
       const data = await res.json();
       teamsData = data.teams;
+      if (data.timer) {
+        serverTimer = data.timer;
+        updateTimerDisplay();
+      }
       renderTeams();
     } catch (err) {
       console.error(err);
@@ -431,6 +578,21 @@ WINS!`;
     } catch (err) {
       console.error(err);
       alert('Failed to update score');
+    }
+  }
+
+  async function resetScores() {
+    if (!confirm('Are you sure you want to reset all scores to 0?')) return;
+    try {
+      const res = await apiFetch('/api/reset_scores', { method: 'POST' });
+      if (res.ok) {
+        fetchState();
+      } else {
+        alert('Failed to reset scores');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to reset scores');
     }
   }
 

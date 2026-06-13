@@ -160,6 +160,7 @@
       border: 4px solid var(--text);
       box-shadow: 6px 6px 0px var(--text);
       padding: 1.5rem;
+      padding-bottom: 120px;
       font-family: 'PressStart2P', system-ui, sans-serif;
       font-size: 0.8rem;
       line-height: 1.8;
@@ -346,7 +347,7 @@
 
   async function apiFetch(path, options = {}) {
     const headers = { ...options.headers, 'x-admin-password': getAdminPassword() };
-    const res = await fetch(API_BASE_URL + path, { ...options, headers });
+    const res = await fetch(API_BASE_URL + path, { cache: 'no-store', ...options, headers });
     if (res.status === 401) {
       sessionStorage.removeItem('adminPassword');
       alert("Invalid or missing admin password. Please try again.");
