@@ -305,9 +305,9 @@
   </div>
 </header>
 
-<div class="container">
+<div class="container" style="align-items: flex-start;">
   
-  <div style="background: white; border: 4px solid var(--text); padding: 1.5rem; margin-bottom: 2rem; display: flex; flex-direction: column; align-items: center; box-shadow: 6px 6px 0px var(--text); z-index: 10; position: relative;">
+  <div style="flex: 0 0 auto; background: white; border: 4px solid var(--text); padding: 1.5rem; display: flex; flex-direction: column; align-items: center; box-shadow: 6px 6px 0px var(--text); z-index: 10; position: relative;">
     <h2 style="margin: 0 0 1rem 0;">COUNTDOWN</h2>
     <input type="text" id="timerDisplay" value="05:00" onfocus="startEditTimer()" onblur="finishEditTimer(this.value)" onkeydown="if(event.key === 'Enter') this.blur()" style="font-size: 3rem; margin-bottom: 1rem; cursor: pointer; border: none; background: transparent; text-align: center; color: var(--text); outline: none; font-family: 'PressStart2P', system-ui, sans-serif; width: 250px;" title="Click to edit timer">
     <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
@@ -322,7 +322,7 @@
     </div>
   </div>
 
-  <div id="teamsGrid" class="team-grid">
+  <div id="teamsGrid" class="team-grid" style="flex: 1; overflow-y: auto; align-content: flex-start;">
     <!-- Teams will be populated here -->
   </div>
 </div>
