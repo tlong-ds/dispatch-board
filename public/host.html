@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Host View - Item Dispatch</title>
+  <style>
+    :root {
+      --bg: #111827;
+      --text: #F9FAFB;
+      --card: #1F2937;
+      --primary: #3B82F6;
+      --primary-hover: #2563EB;
+      --success: #10B981;
+      --danger: #EF4444;
+      --danger-hover: #DC2626;
+      --border: #374151;
+      --input-bg: #111827;
+    }
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+    .btn {
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+    .btn-danger {
+      background: var(--danger);
+    }
+    .btn-danger:hover {
+      background: var(--danger-hover);
+    }
+    .btn-primary {
+      background: var(--primary);
+    }
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+    .btn-sm {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.875rem;
+    }
+    .container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+    .items-panel, .teams-panel {
+      flex: 1;
+      padding: 1.5rem;
+      overflow-y: auto;
+    }
+    .items-panel {
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    h2 {
+      margin: 0;
+      font-size: 1.25rem;
+      color: #9CA3AF;
+    }
+    select {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 0.5rem;
+      border-radius: 0.375rem;
+    }
+    .team-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+    .team-card {
+      background: var(--card);
+      padding: 1.5rem;
+      border-radius: 0.5rem;
+      border: 1px solid var(--border);
+      position: relative;
+    }
+    .team-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.5rem;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .team-name-input {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid transparent;
+      font-size: 1.125rem;
+      font-weight: 600;
+      padding: 0.25rem;
+      border-radius: 0.25rem;
+      width: 100%;
+      box-sizing: border-box;
+      transition: border-color 0.2s, background-color 0.2s;
+      font-family: inherit;
+      margin-left: -0.25rem;
+    }
+    .team-name-input:hover, .team-name-input:focus {
+      border-color: var(--border);
+      background: var(--bg);
+      outline: none;
+    }
+    .team-status {
+      color: #9CA3AF;
+      font-size: 0.875rem;
+    }
+    .team-item-display {
+      margin-top: 1rem;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--success);
+    }
+    .team-controls {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .team-controls .btn {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      padding: 0;
+    }
+    #bulkItemsTextarea {
+      flex: 1;
+      width: 100%;
+      background: var(--input-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 1rem;
+      border-radius: 0.375rem;
+      font-family: inherit;
+      font-size: 1.125rem;
+      line-height: 1.5;
+      resize: none;
+      box-sizing: border-box;
+    }
+    #bulkItemsTextarea:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Dispatch Host</h1>
+  <button class="btn btn-danger" onclick="resetAll()">Reset All Teams</button>
+</header>
+
+<div class="container">
+  <div class="items-panel">
+    <div class="panel-header">
+      <h2>Available Items</h2>
+      <span id="saveStatus" style="font-size: 0.875rem; color: var(--success); opacity: 0; transition: opacity 0.3s;">Saved</span>
+    </div>
+    <div style="font-size: 0.875rem; color: #9CA3AF; margin-bottom: 0.5rem;">
+      Each line is an item. Click away to save automatically.
+    </div>
+    <textarea id="bulkItemsTextarea" placeholder="Type items here, one per line..."></textarea>
+  </div>
+  
+  <div class="teams-panel">
+    <div class="panel-header">
+      <h2>Teams Overview</h2>
+      <div class="team-controls">
+        <button class="btn btn-primary" onclick="removeLastTeam()" title="Remove last team">−</button>
+        <button class="btn btn-primary" onclick="addTeam()" title="Add team">+</button>
+      </div>
+    </div>
+    <div class="team-grid" id="teamGrid">
+      <!-- Generated by JS -->
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentState = null;
+  let isItemsTyping = false;
+  let activeDropdownSelections = {}; // To preserve dropdown state
+
+  const textarea = document.getElementById('bulkItemsTextarea');
+  
+  textarea.addEventListener('focusin', () => isItemsTyping = true);
+  textarea.addEventListener('focusout', () => {
+    isItemsTyping = false;
+    saveBulkItems();
+  });
+
+  function escapeHtml(unsafe) {
+    if (!unsafe) return '';
+    return unsafe.toString()
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function getQrUrl(hashId) {
+    const url = window.location.origin + '/team/' + hashId;
+    return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`;
+  }
+
+  function expandQr(hashId) {
+    const url = getQrUrl(hashId);
+    const modal = document.createElement('div');
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.width = '100vw';
+    modal.style.height = '100vh';
+    modal.style.backgroundColor = 'rgba(0,0,0,0.8)';
+    modal.style.display = 'flex';
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
+    modal.style.zIndex = '9999';
+    modal.style.cursor = 'zoom-out';
+    modal.style.transition = 'opacity 0.2s';
+    
+    const img = document.createElement('img');
+    img.src = url;
+    img.style.width = '300px';
+    img.style.height = '300px';
+    img.style.backgroundColor = 'white';
+    img.style.padding = '15px';
+    img.style.borderRadius = '12px';
+    img.style.boxShadow = '0 10px 25px rgba(0,0,0,0.5)';
+    img.style.transform = 'scale(0.8)';
+    img.style.transition = 'transform 0.2s';
+    
+    modal.appendChild(img);
+    modal.onclick = () => {
+      modal.style.opacity = '0';
+      setTimeout(() => document.body.removeChild(modal), 200);
+    };
+    
+    document.body.appendChild(modal);
+    
+    // Trigger animations
+    requestAnimationFrame(() => {
+      img.style.transform = 'scale(1)';
+    });
+  }
+
+  async function fetchState() {
+    try {
+      const res = await fetch('/api/state');
+      currentState = await res.json();
+      render();
+    } catch(err) {
+      console.error(err);
+    }
+  }
+
+  async function saveBulkItems() {
+    const text = textarea.value;
+    const items = text.split('\n');
+    await fetch('/api/items/bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items })
+    });
+    
+    const saveStatus = document.getElementById('saveStatus');
+    saveStatus.style.opacity = 1;
+    setTimeout(() => saveStatus.style.opacity = 0, 2000);
+    
+    fetchState();
+  }
+
+  // Teams API
+  async function addTeam() {
+    const nextId = Object.keys(currentState.teams || {}).length + 1;
+    const name = `Team ${nextId}`;
+    await fetch('/api/teams', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
+    fetchState();
+  }
+
+  async function removeLastTeam() {
+    const teamIds = Object.keys(currentState.teams || {}).map(Number).sort((a,b) => b - a);
+    if (teamIds.length === 0) return;
+    
+    const highestId = teamIds[0];
+    const teamToRemove = currentState.teams[highestId];
+    
+    if (teamToRemove) {
+      await fetch(`/api/teams/${teamToRemove._id}`, { method: 'DELETE' });
+      fetchState();
+    }
+  }
+
+  async function updateTeamName(id, newName, oldName) {
+    if (!newName || newName.trim() === '' || newName === oldName) {
+      render(); // revert to old name if invalid
+      return;
+    }
+    await fetch(`/api/teams/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newName.trim() })
+    });
+    fetchState();
+  }
+
+  // Send / Reset
+  async function assignItemToTeam(teamId, itemText) {
+    if (!itemText) return alert('Select an item first');
+    
+    if (itemText === 'Random') {
+      const sentItems = Object.values(currentState.teams).map(t => t.item).filter(Boolean);
+      const availableItems = (currentState.items || []).filter(w => !sentItems.includes(w));
+      if (availableItems.length === 0) return alert('No available items to assign randomly!');
+      const randomIndex = Math.floor(Math.random() * availableItems.length);
+      itemText = availableItems[randomIndex];
+    }
+    
+    await fetch('/api/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ teamId, item: itemText })
+    });
+    fetchState();
+  }
+
+  function handleDropdownChange(selectElement) {
+    activeDropdownSelections[selectElement.id] = selectElement.value;
+  }
+
+  async function resetAll() {
+    if (!confirm('Are you sure you want to clear items for all teams?')) return;
+    await fetch('/api/reset', { method: 'POST' });
+    fetchState();
+  }
+
+  function render() {
+    if (!currentState || !currentState.teams) return;
+    
+    // Capture current dropdown selections before re-rendering
+    const selects = document.querySelectorAll('select[id^="assign-"]');
+    selects.forEach(sel => {
+      activeDropdownSelections[sel.id] = sel.value;
+    });
+
+    if (!isItemsTyping) {
+      textarea.value = (currentState.items || []).join('\n');
+    }
+
+    const sentItems = Object.values(currentState.teams).map(t => t.item).filter(Boolean);
+
+    // Render Teams
+    const teamGrid = document.getElementById('teamGrid');
+    teamGrid.innerHTML = Object.entries(currentState.teams).map(([id, team]) => {
+      
+      const options = (currentState.items || []).map(w => {
+        const isUsed = sentItems.includes(w);
+        return `<option value="${escapeHtml(w)}" ${isUsed ? 'disabled' : ''}>${escapeHtml(w)} ${isUsed ? '(Used)' : ''}</option>`;
+      }).join('');
+
+      // Add Random Option at the top
+      const randomOption = `<option value="Random" style="font-weight:bold; color:var(--primary);">🎲 Random</option>`;
+
+      return `
+      <div class="team-card">
+        <div class="team-card-header">
+          <input type="text" class="team-name-input" value="${escapeHtml(team.name)}" 
+                 onblur="updateTeamName('${team._id}', this.value, '${escapeHtml(team.name)}')"
+                 onkeypress="if(event.key === 'Enter') this.blur()"
+                 title="Click to edit team name">
+          <div class="team-status">${team.item ? 'Item Assigned' : 'Waiting...'}</div>
+        </div>
+        ${team.item ? `<div class="team-item-display">${escapeHtml(team.item)}</div>` : ''}
+        
+        <div style="margin-top: 1rem; display: flex; gap: 0.5rem; align-items: center;">
+          <select id="assign-${id}" style="flex:1;" onchange="handleDropdownChange(this)">
+            <option value="" disabled selected>Assign item...</option>
+            ${randomOption}
+            ${options}
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="assignItemToTeam('${id}', document.getElementById('assign-${id}').value)">Send</button>
+        </div>
+
+        <div style="margin-top: 15px; display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 0.375rem;">
+          <img src="${getQrUrl(team.hashId)}" alt="QR Code" width="50" height="50" 
+               style="border-radius: 4px; background: white; padding: 2px; cursor: zoom-in; transition: transform 0.2s;"
+               onmouseover="this.style.transform='scale(1.05)'"
+               onmouseout="this.style.transform='scale(1)'"
+               onclick="expandQr('${team.hashId}')" title="Click to expand QR Code">
+          <div style="font-size: 0.8rem; color: #9CA3AF;">
+            Scan to join or <br>
+            <a href="/team/${team.hashId}" target="_blank" style="color: var(--primary); text-decoration: none; font-weight: 600;">Open Link</a>
+          </div>
+        </div>
+      </div>
+    `}).join('');
+
+    // Restore dropdown selections
+    const newSelects = document.querySelectorAll('select[id^="assign-"]');
+    newSelects.forEach(sel => {
+      if (activeDropdownSelections[sel.id]) {
+        sel.value = activeDropdownSelections[sel.id];
+      }
+    });
+  }
+
+  let isTeamTyping = false;
+  document.addEventListener('focusin', (e) => {
+    if (e.target.classList.contains('team-name-input')) isTeamTyping = true;
+  });
+  document.addEventListener('focusout', (e) => {
+    if (e.target.classList.contains('team-name-input')) isTeamTyping = false;
+  });
+
+  setInterval(() => {
+    if (!isTeamTyping && !isItemsTyping) fetchState();
+  }, 2000);
+  
+  fetchState();
+</script>
+
+</body>
+</html>

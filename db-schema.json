@@ -1,0 +1,33 @@
+{
+  "Item": {
+    "text": {
+      "type": "String",
+      "required": true,
+      "unique": false
+    }
+  },
+  "Team": {
+    "teamId": {
+      "type": "Number",
+      "required": true,
+      "unique": true
+    },
+    "name": {
+      "type": "String",
+      "required": true,
+      "unique": false
+    },
+    "currentItem": {
+      "type": "String",
+      "required": false,
+      "unique": false,
+      "default": null
+    },
+    "sentAt": {
+      "type": "Date",
+      "required": false,
+      "unique": false,
+      "default": null
+    }
+  }
+}

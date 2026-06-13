@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Team View - Item Dispatch</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root {
+      --bg: #111827;
+      --text: #F9FAFB;
+      --accent: #10B981;
+    }
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      text-align: center;
+      transition: background-color 0.5s;
+    }
+    body.has-item {
+      background-color: #064E3B;
+    }
+    .container {
+      padding: 2rem;
+    }
+    .status {
+      font-size: 1.25rem;
+      color: #9CA3AF;
+      margin-bottom: 1rem;
+      animation: pulse 2s infinite;
+    }
+    .item-display {
+      font-size: 4rem;
+      font-weight: 800;
+      color: var(--accent);
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.5s, transform 0.5s;
+      word-break: break-word;
+    }
+    body.has-item .status {
+      display: none;
+    }
+    body.has-item .item-display {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .team-badge {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      background: rgba(255,255,255,0.1);
+      padding: 0.5rem 1rem;
+      border-radius: 9999px;
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="team-badge" id="teamBadge">Loading Team...</div>
+
+<div class="container">
+  <div class="status" id="status">Waiting for your item...</div>
+  <div class="item-display" id="itemDisplay"></div>
+</div>
+
+<script>
+  const pathParts = window.location.pathname.split('/');
+  let searchId = pathParts[pathParts.length - 1];
+  
+  if (!searchId || searchId === 'team') {
+    const urlParams = new URLSearchParams(window.location.search);
+    searchId = urlParams.get('id');
+  }
+
+  if (!searchId) {
+    document.getElementById('status').textContent = "Error: No Team ID found in URL";
+    document.getElementById('status').style.animation = 'none';
+    document.getElementById('teamBadge').style.display = 'none';
+  }
+
+  let currentItem = null;
+
+  async function pollItem() {
+    if (!searchId) return;
+    
+    try {
+      const res = await fetch(`/api/team/${searchId}`);
+      if (res.ok) {
+        const data = await res.json();
+        
+        if (data.name) {
+          document.getElementById('teamBadge').textContent = data.name;
+        }
+
+        if (data.item !== currentItem) {
+          currentItem = data.item;
+          updateUI();
+        }
+      }
+    } catch (err) {
+      console.error("Polling error:", err);
+    }
+  }
+
+  function updateUI() {
+    const itemDisplay = document.getElementById('itemDisplay');
+    if (currentItem) {
+      itemDisplay.textContent = currentItem;
+      document.body.classList.add('has-item');
+      if (navigator.vibrate) navigator.vibrate(200);
+    } else {
+      itemDisplay.textContent = '';
+      document.body.classList.remove('has-item');
+    }
+  }
+
+  if (searchId) {
+    setInterval(pollItem, 2000);
+    pollItem();
+  }
+</script>
+
+</body>
+</html>
