@@ -462,11 +462,11 @@
   }
 
   async function removeLastTeam() {
-    const teamIds = Object.keys(currentState.teams || {}).map(Number).sort((a,b) => b - a);
-    if (teamIds.length === 0) return;
+    const teamKeys = Object.keys(currentState.teams || {}).sort();
+    if (teamKeys.length === 0) return;
     
-    const highestId = teamIds[0];
-    const teamToRemove = currentState.teams[highestId];
+    const lastKey = teamKeys[teamKeys.length - 1];
+    const teamToRemove = currentState.teams[lastKey];
     
     if (teamToRemove) {
       await apiFetch(`/api/teams/${teamToRemove._id}`, { method: 'DELETE' });
