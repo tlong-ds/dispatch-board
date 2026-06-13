@@ -386,11 +386,13 @@ WINS!`;
     }
   }
 
+  const API_BASE_URL = '__API_BASE_URL__'.startsWith('__') ? 'http://localhost:3000' : '__API_BASE_URL__'; // Replaced by GitHub Actions
+
   async function apiFetch(url, options = {}) {
     const password = localStorage.getItem('adminPassword') || '';
     const headers = { 'Content-Type': 'application/json' };
     if (password) headers['x-admin-password'] = password;
-    return fetch(url, { ...options, headers });
+    return fetch(API_BASE_URL + url, { ...options, headers });
   }
 
   async function fetchState() {
