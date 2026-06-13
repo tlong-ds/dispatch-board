@@ -4,10 +4,12 @@ const mongoose = require('mongoose');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const cors = require('cors');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.use(cors()); // Enable CORS for GitHub Pages frontend
 app.use(express.json());
 app.use(express.static('public'));
 

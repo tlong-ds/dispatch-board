@@ -77,12 +77,16 @@
 </div>
 
 <script>
-  const pathParts = window.location.pathname.split('/');
-  let searchId = pathParts[pathParts.length - 1];
+  const API_BASE_URL = ''; // TODO: Update to your Render URL (e.g., 'https://dispatch-board-xxxx.onrender.com')
+
+  const urlParams = new URLSearchParams(window.location.search);
+  let searchId = urlParams.get('id');
   
-  if (!searchId || searchId === 'team') {
-    const urlParams = new URLSearchParams(window.location.search);
-    searchId = urlParams.get('id');
+  // Fallback for old path-based links if any
+  if (!searchId) {
+    const pathParts = window.location.pathname.split('/');
+    searchId = pathParts[pathParts.length - 1];
+    if (searchId === 'team' || searchId === 'team.html') searchId = null;
   }
 
   if (!searchId) {
@@ -97,7 +101,7 @@
     if (!searchId) return;
     
     try {
-      const res = await fetch(`/api/team/${searchId}`);
+      const res = await fetch(API_BASE_URL + `/api/team/${searchId}`);
       if (res.ok) {
         const data = await res.json();
         

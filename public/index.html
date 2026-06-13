@@ -211,6 +211,7 @@
 </div>
 
 <script>
+  const API_BASE_URL = ''; // TODO: Update to your Render URL (e.g., 'https://dispatch-board-xxxx.onrender.com')
   let currentState = null;
   let isItemsTyping = false;
   let activeDropdownSelections = {}; // To preserve dropdown state
@@ -234,7 +235,9 @@
   }
 
   function getQrUrl(hashId) {
-    const url = window.location.origin + '/team/' + hashId;
+    // Construct absolute URL for QR code, safely handling GitHub pages subdirectory
+    const basePath = window.location.pathname.replace(/index\.html$/, '').replace(/\/$/, '');
+    const url = window.location.origin + basePath + '/team.html?id=' + hashId;
     return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`;
   }
 
@@ -281,7 +284,7 @@
 
   async function fetchState() {
     try {
-      const res = await fetch('/api/state');
+      const res = await fetch(API_BASE_URL + '/api/state');
       currentState = await res.json();
       render();
     } catch(err) {
@@ -292,7 +295,7 @@
   async function saveBulkItems() {
     const text = textarea.value;
     const items = text.split('\n');
-    await fetch('/api/items/bulk', {
+    await fetch(API_BASE_URL + '/api/items/bulk', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ items })
@@ -309,7 +312,7 @@
   async function addTeam() {
     const nextId = Object.keys(currentState.teams || {}).length + 1;
     const name = `Team ${nextId}`;
-    await fetch('/api/teams', {
+    await fetch(API_BASE_URL + '/api/teams', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name })
@@ -325,7 +328,7 @@
     const teamToRemove = currentState.teams[highestId];
     
     if (teamToRemove) {
-      await fetch(`/api/teams/${teamToRemove._id}`, { method: 'DELETE' });
+      await fetch(API_BASE_URL + `/api/teams/${teamToRemove._id}`, { method: 'DELETE' });
       fetchState();
     }
   }
@@ -335,7 +338,7 @@
       render(); // revert to old name if invalid
       return;
     }
-    await fetch(`/api/teams/${id}`, {
+    await fetch(API_BASE_URL + `/api/teams/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: newName.trim() })
@@ -355,7 +358,7 @@
       itemText = availableItems[randomIndex];
     }
     
-    await fetch('/api/send', {
+    await fetch(API_BASE_URL + '/api/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ teamId, item: itemText })
@@ -369,7 +372,7 @@
 
   async function resetAll() {
     if (!confirm('Are you sure you want to clear items for all teams?')) return;
-    await fetch('/api/reset', { method: 'POST' });
+    await fetch(API_BASE_URL + '/api/reset', { method: 'POST' });
     fetchState();
   }
 
@@ -428,7 +431,7 @@
                onclick="expandQr('${team.hashId}')" title="Click to expand QR Code">
           <div style="font-size: 0.8rem; color: #9CA3AF;">
             Scan to join or <br>
-            <a href="/team/${team.hashId}" target="_blank" style="color: var(--primary); text-decoration: none; font-weight: 600;">Open Link</a>
+            <a href="team.html?id=${team.hashId}" target="_blank" style="color: var(--primary); text-decoration: none; font-weight: 600;">Open Link</a>
           </div>
         </div>
       </div>
