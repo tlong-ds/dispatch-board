@@ -238,11 +238,8 @@ app.post('/api/send', requireAdmin, async (req, res) => {
 app.get('/api/team/:id', async (req, res) => {
   try {
     const searchId = req.params.id;
-    // Search by hashId, or fallback to teamId for backwards compatibility
+    // Search by hashId only to prevent URL guessing/leakage
     let team = await Team.findOne({ hashId: searchId });
-    if (!team && !isNaN(searchId)) {
-      team = await Team.findOne({ teamId: Number(searchId) });
-    }
     
     if (team) {
       res.json({ item: team.currentItem, name: team.name });
