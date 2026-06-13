@@ -561,14 +561,14 @@
         </div>
 
         <div style="margin-top: 15px; display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 0.375rem;">
-          <img src="${getQrUrl(team.hashId)}" alt="QR Code" width="50" height="50" 
+          <img src="${getQrUrl(team._id)}" alt="QR Code" width="50" height="50" 
                style="border-radius: 4px; background: white; padding: 2px; cursor: zoom-in; transition: transform 0.2s;"
                onmouseover="this.style.transform='scale(1.05)'"
                onmouseout="this.style.transform='scale(1)'"
-               onclick="expandQr('${team.hashId}')" title="Click to expand QR Code">
+               onclick="expandQr('${team._id}')" title="Click to expand QR Code">
           <div style="font-size: 0.8rem; color: #9CA3AF;">
             Scan to join or <br>
-            <a href="team.html?id=${team.hashId}" target="_blank" style="color: var(--primary); text-decoration: none; font-weight: 600;">Open Link</a>
+            <a href="team.html?id=${team._id}" target="_blank" style="color: var(--primary); text-decoration: none; font-weight: 600;">Open Link</a>
           </div>
         </div>
       </div>

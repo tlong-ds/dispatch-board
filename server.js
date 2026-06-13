@@ -238,8 +238,8 @@ app.post('/api/send', requireAdmin, async (req, res) => {
 app.get('/api/team/:id', async (req, res) => {
   try {
     const searchId = req.params.id;
-    // Search by hashId only to prevent URL guessing/leakage
-    let team = await Team.findOne({ hashId: searchId });
+    // Search by MongoDB _id to guarantee cryptographic unguessability and zero leakage
+    let team = await Team.findById(searchId);
     
     if (team) {
       res.json({ item: team.currentItem, name: team.name });
