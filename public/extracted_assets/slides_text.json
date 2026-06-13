@@ -1,0 +1,244 @@
+{
+  "slide1": {
+    "groups": [
+      {
+        "group_name": "Group 11",
+        "elements": [
+          {
+            "name": "Freeform 12",
+            "image": "image9.png"
+          },
+          {
+            "name": "Freeform 13",
+            "image": "image11.png"
+          },
+          {
+            "name": "Freeform 14",
+            "image": "image11.png"
+          },
+          {
+            "name": "Freeform 15",
+            "image": "image11.png"
+          }
+        ]
+      }
+    ],
+    "ungrouped_elements": [
+      {
+        "name": "Freeform 2",
+        "image": "image1.png"
+      },
+      {
+        "name": "Freeform 3",
+        "image": "image3.png"
+      },
+      {
+        "name": "Freeform 4",
+        "image": "image5.png"
+      },
+      {
+        "name": "Freeform 5",
+        "image": "image5.png"
+      },
+      {
+        "name": "Freeform 6",
+        "image": "image5.png"
+      },
+      {
+        "name": "TextBox 7",
+        "text": "GAME NIGHT"
+      },
+      {
+        "name": "Freeform 8",
+        "image": "image7.png"
+      },
+      {
+        "name": "Freeform 9",
+        "image": "image3.png"
+      },
+      {
+        "name": "TextBox 10",
+        "text": "START"
+      },
+      {
+        "name": "Freeform 16",
+        "image": "image7.png"
+      }
+    ]
+  },
+  "slide2": {
+    "groups": [
+      {
+        "group_name": "Group 17",
+        "elements": [
+          {
+            "name": "Freeform 18",
+            "image": "image9.png"
+          },
+          {
+            "name": "Freeform 19",
+            "image": "image11.png"
+          },
+          {
+            "name": "Freeform 20",
+            "image": "image11.png"
+          },
+          {
+            "name": "Freeform 21",
+            "image": "image11.png"
+          },
+          {
+            "name": "Freeform 22",
+            "image": "image9.png"
+          }
+        ]
+      }
+    ],
+    "ungrouped_elements": [
+      {
+        "name": "Freeform 2",
+        "image": "image1.png"
+      },
+      {
+        "name": "Freeform 3",
+        "image": "image3.png"
+      },
+      {
+        "name": "Freeform 4",
+        "image": "image5.png"
+      },
+      {
+        "name": "Freeform 5",
+        "image": "image5.png"
+      },
+      {
+        "name": "Freeform 6",
+        "image": "image5.png"
+      },
+      {
+        "name": "Freeform 7",
+        "image": "image7.png"
+      },
+      {
+        "name": "Freeform 8",
+        "image": "image3.png"
+      },
+      {
+        "name": "Freeform 9",
+        "image": "image13.png"
+      },
+      {
+        "name": "TextBox 10",
+        "text": "HOW TO PLAY"
+      },
+      {
+        "name": "TextBox 11",
+        "text": "THERE ARE 3 DIFFERENT TYPES OF GAMES!"
+      },
+      {
+        "name": "TextBox 12",
+        "text": "Answer the question"
+      },
+      {
+        "name": "Freeform 13",
+        "image": "image13.png"
+      },
+      {
+        "name": "TextBox 14",
+        "text": "Multiple choice"
+      },
+      {
+        "name": "Freeform 15",
+        "image": "image13.png"
+      },
+      {
+        "name": "TextBox 16",
+        "text": "Complete the word"
+      }
+    ]
+  },
+  "slide3": {
+    "groups": [
+      {
+        "group_name": "Group 10",
+        "elements": [
+          {
+            "name": "Freeform 11",
+            "image": "image9.png"
+          },
+          {
+            "name": "Freeform 12",
+            "image": "image11.png"
+          },
+          {
+            "name": "Freeform 13",
+            "image": "image11.png"
+          },
+          {
+            "name": "Freeform 14",
+            "image": "image11.png"
+          },
+          {
+            "name": "Freeform 15",
+            "image": "image9.png"
+          }
+        ]
+      },
+      {
+        "group_name": "Group 16",
+        "elements": [
+          {
+            "name": "Freeform 17",
+            "image": "image15.png"
+          },
+          {
+            "name": "Freeform 18",
+            "image": "image17.png"
+          }
+        ]
+      }
+    ],
+    "ungrouped_elements": [
+      {
+        "name": "Freeform 2",
+        "image": "image1.png"
+      },
+      {
+        "name": "Freeform 3",
+        "image": "image5.png"
+      },
+      {
+        "name": "Freeform 4",
+        "image": "image5.png"
+      },
+      {
+        "name": "Freeform 5",
+        "image": "image5.png"
+      },
+      {
+        "name": "Freeform 6",
+        "image": "image7.png"
+      },
+      {
+        "name": "Freeform 7",
+        "image": "image3.png"
+      },
+      {
+        "name": "Freeform 8",
+        "image": "image3.png"
+      },
+      {
+        "name": "Freeform 9",
+        "image": "image7.png"
+      },
+      {
+        "name": "TextBox 19",
+        "text": "GAME OVER"
+      },
+      {
+        "name": "Freeform 20",
+        "image": "image7.png"
+      }
+    ]
+  }
+}

@@ -4,76 +4,72 @@
   <meta charset="UTF-8">
   <title>Host View - Item Dispatch</title>
   <style>
+    @font-face {
+      font-family: 'PressStart2P';
+      src: url('/PressStart2P-Regular.ttf') format('truetype');
+    }
     :root {
-      --bg: #111827;
-      --text: #F9FAFB;
-      --card: #1F2937;
-      --primary: #3B82F6;
-      --primary-hover: #2563EB;
-      --success: #10B981;
-      --danger: #EF4444;
-      --danger-hover: #DC2626;
-      --border: #374151;
-      --input-bg: #111827;
+      --bg: #F7F7F7;
+      --text: #535454;
+      --primary: #535454;
+      --success: #535454;
     }
     body {
       margin: 0;
-      font-family: 'Inter', system-ui, sans-serif;
+      font-family: 'PressStart2P', system-ui, sans-serif;
       background-color: var(--bg);
       color: var(--text);
       display: flex;
       flex-direction: column;
       height: 100vh;
+      overflow: hidden;
+      position: relative;
     }
     header {
       padding: 1.5rem;
-      border-bottom: 1px solid var(--border);
       display: flex;
       justify-content: space-between;
       align-items: center;
+      z-index: 10;
     }
     h1 {
       margin: 0;
       font-size: 1.5rem;
-      font-weight: 600;
+      text-transform: uppercase;
+      line-height: 1.5;
     }
     .btn {
-      color: white;
-      border: none;
-      padding: 0.5rem 1rem;
-      border-radius: 0.375rem;
+      color: var(--bg);
+      background-color: var(--text);
+      border: 4px solid var(--text);
+      padding: 1rem 1.5rem;
       cursor: pointer;
-      font-weight: 500;
-      transition: background 0.2s;
+      font-family: 'PressStart2P', system-ui, sans-serif;
+      font-size: 0.8rem;
+      transition: transform 0.1s;
     }
-    .btn-danger {
-      background: var(--danger);
-    }
-    .btn-danger:hover {
-      background: var(--danger-hover);
-    }
-    .btn-primary {
-      background: var(--primary);
-    }
-    .btn-primary:hover {
-      background: var(--primary-hover);
+    .btn:active {
+      transform: translateY(4px);
     }
     .btn-sm {
-      padding: 0.25rem 0.5rem;
-      font-size: 0.875rem;
+      padding: 0.8rem 1rem;
+      font-size: 0.6rem;
     }
     .container {
       display: flex;
       flex: 1;
       overflow: hidden;
+      z-index: 10;
+      padding-bottom: 80px;
+      gap: 1.5rem;
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
     }
     .items-panel, .teams-panel {
       flex: 1;
-      padding: 1.5rem;
       overflow-y: auto;
     }
     .items-panel {
-      border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
     }
@@ -85,27 +81,34 @@
     }
     h2 {
       margin: 0;
-      font-size: 1.25rem;
-      color: #9CA3AF;
+      font-size: 1rem;
+      color: var(--text);
     }
     select {
-      background: var(--bg);
+      background: #fff;
       color: var(--text);
-      border: 1px solid var(--border);
+      border: 2px solid var(--text);
       padding: 0.5rem;
-      border-radius: 0.375rem;
+      font-family: 'PressStart2P', system-ui, sans-serif;
+      font-size: 0.6rem;
+      cursor: pointer;
     }
     .team-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      padding-bottom: 2rem;
     }
     .team-card {
-      background: var(--card);
+      background: white;
+      border: 4px solid var(--text);
+      box-shadow: 6px 6px 0px var(--text);
       padding: 1.5rem;
-      border-radius: 0.5rem;
-      border: 1px solid var(--border);
       position: relative;
+      min-height: 150px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
     .team-card-header {
       display: flex;
@@ -118,70 +121,183 @@
     .team-name-input {
       background: transparent;
       color: var(--text);
-      border: 1px solid transparent;
-      font-size: 1.125rem;
-      font-weight: 600;
-      padding: 0.25rem;
-      border-radius: 0.25rem;
+      border: none;
+      font-size: 0.8rem;
       width: 100%;
-      box-sizing: border-box;
-      transition: border-color 0.2s, background-color 0.2s;
-      font-family: inherit;
-      margin-left: -0.25rem;
+      font-family: 'PressStart2P', system-ui, sans-serif;
+      padding: 0.2rem;
     }
-    .team-name-input:hover, .team-name-input:focus {
-      border-color: var(--border);
-      background: var(--bg);
+    .team-name-input:focus {
       outline: none;
+      border-bottom: 2px dashed var(--text);
     }
     .team-status {
-      color: #9CA3AF;
-      font-size: 0.875rem;
+      color: var(--text);
+      font-size: 0.6rem;
+      opacity: 0.7;
     }
     .team-item-display {
       margin-top: 1rem;
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--success);
+      font-size: 1rem;
+      color: var(--text);
+      height: 3.5rem;
+      line-height: 1.5;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      word-break: break-word;
     }
     .team-controls {
       display: flex;
       gap: 0.5rem;
     }
-    .team-controls .btn {
-      width: 32px;
-      height: 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.25rem;
-      padding: 0;
-    }
     #bulkItemsTextarea {
       flex: 1;
       width: 100%;
-      background: var(--input-bg);
+      background: white;
       color: var(--text);
-      border: 1px solid var(--border);
-      padding: 1rem;
-      border-radius: 0.375rem;
-      font-family: inherit;
-      font-size: 1.125rem;
-      line-height: 1.5;
+      border: 4px solid var(--text);
+      box-shadow: 6px 6px 0px var(--text);
+      padding: 1.5rem;
+      font-family: 'PressStart2P', system-ui, sans-serif;
+      font-size: 0.8rem;
+      line-height: 1.8;
       resize: none;
       box-sizing: border-box;
     }
     #bulkItemsTextarea:focus {
       outline: none;
-      border-color: var(--primary);
+    }
+
+    /* Decorative Background */
+    .bg-road {
+      position: absolute;
+      bottom: 40px;
+      left: 0;
+      width: 200%;
+      height: 20px;
+      background: url('/extracted_assets/media/image12.svg') repeat-x bottom center / auto 20px;
+      z-index: 0;
+    }
+    .bg-road::before {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 0;
+      width: 100%;
+      height: 40px;
+      background: url('/extracted_assets/media/image6.svg') repeat-x top center / auto 40px;
+    }
+
+    .bg-dino {
+      position: absolute;
+      bottom: 35px;
+      left: 50px;
+      width: 110px;
+      height: 117px;
+      background: url('/extracted_assets/media/image2.svg') no-repeat center center / contain;
+      z-index: 9999;
+    }
+    .bg-cactus-small {
+      position: absolute;
+      bottom: 35px;
+      width: 50px;
+      height: 75px;
+      background: url('/extracted_assets/media/image8.svg') no-repeat center center / contain;
+      z-index: 9999;
+    }
+    .bg-cactus-large {
+      position: absolute;
+      bottom: 35px;
+      width: 85px;
+      height: 125px;
+      background: url('/extracted_assets/media/image7.png') no-repeat center bottom / contain;
+      z-index: 9999;
+    }
+    .cloud-cluster-1 {
+      position: absolute;
+      top: 40px;
+      width: 250px;
+      height: 100px;
+      animation: float 40s linear infinite;
+      z-index: 0;
+    }
+    .cloud-cluster-2 {
+      position: absolute;
+      top: 70px;
+      width: 300px;
+      height: 120px;
+      animation: float 55s linear infinite 20s;
+      z-index: 0;
+    }
+    .cloud-cluster-3 {
+      position: absolute;
+      top: 20px;
+      width: 200px;
+      height: 90px;
+      animation: float 30s linear infinite 10s;
+      z-index: 0;
+    }
+    .cloud-part-1 {
+      position: absolute;
+      top: 15px;
+      left: 0;
+      width: 100px;
+      height: 60px;
+      background: url('/extracted_assets/media/image3.svg') no-repeat center center / contain;
+      opacity: 0.8;
+    }
+    .cloud-part-2 {
+      position: absolute;
+      top: 0;
+      left: 60px;
+      width: 140px;
+      height: 80px;
+      background: url('/extracted_assets/media/image4.svg') no-repeat center center / contain;
+      opacity: 0.6;
+    }
+    .cloud-part-3 {
+      position: absolute;
+      top: 25px;
+      left: 150px;
+      width: 90px;
+      height: 50px;
+      background: url('/extracted_assets/media/image3.svg') no-repeat center center / contain;
+      opacity: 0.9;
+    }
+    @keyframes float {
+      from { transform: translateX(100vw); }
+      to { transform: translateX(-100vw); }
     }
   </style>
 </head>
 <body>
 
+<div class="cloud-cluster-1" style="transform: translateX(100vw);">
+  <div class="cloud-part-1"></div>
+  <div class="cloud-part-2"></div>
+  <div class="cloud-part-3"></div>
+</div>
+<div class="cloud-cluster-2" style="transform: translateX(100vw);">
+  <div class="cloud-part-2" style="left: 0; top: 10px;"></div>
+  <div class="cloud-part-1" style="left: 100px; top: 0;"></div>
+</div>
+<div class="cloud-cluster-3" style="transform: translateX(100vw);">
+  <div class="cloud-part-3" style="left: 0; top: 10px;"></div>
+  <div class="cloud-part-1" style="left: 50px; top: 0;"></div>
+  <div class="cloud-part-2" style="left: 110px; top: 15px;"></div>
+</div>
+<div class="bg-dino" id="dino"></div>
+<div class="bg-cactus-small" style="left: calc(50% + 300px);"></div>
+<div class="bg-cactus-large" style="left: calc(50% + 340px);"></div>
+<div class="bg-cactus-small" style="left: calc(50% + 420px);"></div>
+<div class="bg-cactus-large" style="left: calc(50% + 460px);"></div>
+<div class="bg-road"></div>
+
 <header>
   <h1>Dispatch Host</h1>
-  <button class="btn btn-danger" onclick="resetAll()">Reset All Teams</button>
+  <button class="btn btn-danger" onclick="resetAll()">RESET TEAMS</button>
 </header>
 
 <div class="container">
@@ -211,7 +327,7 @@
 </div>
 
 <script>
-  const API_BASE_URL = '__API_BASE_URL__'; // Replaced by GitHub Actions
+  const API_BASE_URL = '__API_BASE_URL__'.startsWith('__') ? 'http://localhost:3000' : '__API_BASE_URL__'; // Replaced by GitHub Actions
   let currentState = null;
   let isItemsTyping = false;
   let activeDropdownSelections = {}; // To preserve dropdown state
@@ -433,10 +549,10 @@
                  title="Click to edit team name">
           <div class="team-status">${team.item ? 'Item Assigned' : 'Waiting...'}</div>
         </div>
-        ${team.item ? `<div class="team-item-display">${escapeHtml(team.item)}</div>` : ''}
+        <div class="team-item-display">${team.item ? escapeHtml(team.item) : ''}</div>
         
         <div style="margin-top: 1rem; display: flex; gap: 0.5rem; align-items: center;">
-          <select id="assign-${id}" style="flex:1;" onchange="handleDropdownChange(this)">
+          <select id="assign-${id}" style="flex:1; min-width: 0; text-overflow: ellipsis;" onchange="handleDropdownChange(this)">
             <option value="" disabled selected>Assign item...</option>
             ${randomOption}
             ${options}

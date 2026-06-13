@@ -5,15 +5,19 @@
   <title>Team View - Item Dispatch</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
+    @font-face {
+      font-family: 'PressStart2P';
+      src: url('/PressStart2P-Regular.ttf') format('truetype');
+    }
     :root {
-      --bg: #111827;
-      --text: #F9FAFB;
-      --accent: #10B981;
+      --bg: #F7F7F7;
+      --text: #535454;
+      --accent: #535454;
     }
     body {
       margin: 0;
-      font-family: 'Inter', system-ui, sans-serif;
-      background-color: var(--bg);
+      font-family: 'PressStart2P', system-ui, sans-serif;
+      background-color: transparent;
       color: var(--text);
       display: flex;
       flex-direction: column;
@@ -21,28 +25,38 @@
       justify-content: center;
       height: 100vh;
       text-align: center;
-      transition: background-color 0.5s;
+      overflow: hidden;
+      position: relative;
     }
     body.has-item {
-      background-color: #064E3B;
+      background-color: #E2E8F0;
     }
     .container {
       padding: 2rem;
+      z-index: 10;
+      position: relative;
     }
     .status {
-      font-size: 1.25rem;
-      color: #9CA3AF;
+      font-size: 1rem;
+      color: var(--text);
       margin-bottom: 1rem;
       animation: pulse 2s infinite;
+      line-height: 1.5;
     }
     .item-display {
-      font-size: 4rem;
+      font-size: 2rem;
       font-weight: 800;
-      color: var(--accent);
+      color: var(--text);
       opacity: 0;
       transform: translateY(20px);
       transition: opacity 0.5s, transform 0.5s;
       word-break: break-word;
+      background: white;
+      border: 4px solid var(--text);
+      box-shadow: 6px 6px 0px var(--text);
+      padding: 3rem 4rem;
+      display: inline-block;
+      min-width: 300px;
     }
     body.has-item .status {
       display: none;
@@ -57,17 +71,151 @@
     }
     .team-badge {
       position: absolute;
-      top: 1rem;
-      left: 1rem;
-      background: rgba(255,255,255,0.1);
-      padding: 0.5rem 1rem;
-      border-radius: 9999px;
+      top: 2rem;
+      left: 2rem;
+      background-color: var(--text);
+      color: var(--bg);
+      border: 4px solid var(--text);
+      padding: 1rem 1.5rem;
       font-weight: 600;
-      font-size: 0.875rem;
+      font-size: 0.8rem;
+      z-index: 10;
+    }
+
+    /* Decorative Background */
+    .bg-road {
+      position: absolute;
+      bottom: 40px;
+      left: 0;
+      width: 200%;
+      height: 20px;
+      background: url('/extracted_assets/media/image12.svg') repeat-x bottom center / auto 20px;
+      z-index: 0;
+    }
+    .bg-road::before {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 0;
+      width: 100%;
+      height: 40px;
+      background: url('/extracted_assets/media/image6.svg') repeat-x top center / auto 40px;
+    }
+
+    .bg-dino {
+      position: absolute;
+      bottom: 35px;
+      left: 50px;
+      width: 110px;
+      height: 117px;
+      background: url('/extracted_assets/media/image2.svg') no-repeat center center / contain;
+      z-index: 9999;
+    }
+    .bg-dino.jumping {
+      animation: jump 0.5s ease-out;
+    }
+    @keyframes jump {
+      0% { bottom: 35px; }
+      50% { bottom: 135px; }
+      100% { bottom: 35px; }
+    }
+    .bg-cactus-small {
+      position: absolute;
+      bottom: 35px;
+      left: calc(50% + 250px);
+      width: 50px;
+      height: 75px;
+      background: url('/extracted_assets/media/image8.svg') no-repeat center center / contain;
+      z-index: 9999;
+    }
+    .bg-cactus-large {
+      position: absolute;
+      bottom: 35px;
+      left: calc(50% + 275px);
+      width: 85px;
+      height: 125px;
+      background: url('/extracted_assets/media/image7.png') no-repeat center bottom / contain;
+      z-index: 9999;
+    }
+    .cloud-cluster-1 {
+      position: absolute;
+      top: 40px;
+      width: 250px;
+      height: 100px;
+      animation: float 40s linear infinite;
+      z-index: 0;
+    }
+    .cloud-cluster-2 {
+      position: absolute;
+      top: 70px;
+      width: 300px;
+      height: 120px;
+      animation: float 55s linear infinite 20s;
+      z-index: 0;
+    }
+    .cloud-cluster-3 {
+      position: absolute;
+      top: 20px;
+      width: 200px;
+      height: 90px;
+      animation: float 30s linear infinite 10s;
+      z-index: 0;
+    }
+    .cloud-part-1 {
+      position: absolute;
+      top: 15px;
+      left: 0;
+      width: 100px;
+      height: 60px;
+      background: url('/extracted_assets/media/image3.svg') no-repeat center center / contain;
+      opacity: 0.8;
+    }
+    .cloud-part-2 {
+      position: absolute;
+      top: 0;
+      left: 60px;
+      width: 140px;
+      height: 80px;
+      background: url('/extracted_assets/media/image4.svg') no-repeat center center / contain;
+      opacity: 0.6;
+    }
+    .cloud-part-3 {
+      position: absolute;
+      top: 25px;
+      left: 150px;
+      width: 90px;
+      height: 50px;
+      background: url('/extracted_assets/media/image3.svg') no-repeat center center / contain;
+      opacity: 0.9;
+    }
+    @keyframes float {
+      from { transform: translateX(100vw); }
+      to { transform: translateX(-100vw); }
     }
   </style>
 </head>
 <body>
+
+<div class="cloud-cluster-1" style="transform: translateX(100vw);">
+  <div class="cloud-part-1"></div>
+  <div class="cloud-part-2"></div>
+  <div class="cloud-part-3"></div>
+</div>
+<div class="cloud-cluster-2" style="transform: translateX(100vw);">
+  <div class="cloud-part-2" style="left: 0; top: 10px;"></div>
+  <div class="cloud-part-1" style="left: 100px; top: 0;"></div>
+</div>
+<div class="cloud-cluster-3" style="transform: translateX(100vw);">
+  <div class="cloud-part-3" style="left: 0; top: 10px;"></div>
+  <div class="cloud-part-1" style="left: 50px; top: 0;"></div>
+  <div class="cloud-part-2" style="left: 110px; top: 15px;"></div>
+</div>
+<div class="bg-dino" id="dino"></div>
+<div class="bg-cactus-small" style="left: calc(50% + 300px);"></div>
+<div class="bg-cactus-large" style="left: calc(50% + 340px);"></div>
+<div class="bg-cactus-small" style="left: calc(50% + 420px);"></div>
+<div class="bg-cactus-large" style="left: calc(50% + 460px);"></div>
+<div class="bg-road"></div>
 
 <div class="team-badge" id="teamBadge">Loading Team...</div>
 
@@ -77,7 +225,7 @@
 </div>
 
 <script>
-  const API_BASE_URL = '__API_BASE_URL__'; // Replaced by GitHub Actions
+  const API_BASE_URL = '__API_BASE_URL__'.startsWith('__') ? 'http://localhost:3000' : '__API_BASE_URL__'; // Replaced by GitHub Actions
 
   const urlParams = new URLSearchParams(window.location.search);
   let searchId = urlParams.get('id');
@@ -121,10 +269,19 @@
 
   function updateUI() {
     const itemDisplay = document.getElementById('itemDisplay');
+    const dino = document.getElementById('dino');
+    
     if (currentItem) {
       itemDisplay.textContent = currentItem;
       document.body.classList.add('has-item');
       if (navigator.vibrate) navigator.vibrate(200);
+      
+      // Trigger jump animation
+      if (dino) {
+        dino.classList.remove('jumping');
+        void dino.offsetWidth; // trigger reflow
+        dino.classList.add('jumping');
+      }
     } else {
       itemDisplay.textContent = '';
       document.body.classList.remove('has-item');
