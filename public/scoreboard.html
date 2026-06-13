@@ -562,6 +562,11 @@
   }
 
   async function addScore(teamId, delta) {
+    if (delta > 0) {
+      if (window.AudioFX) window.AudioFX.playCoin();
+    } else {
+      if (window.AudioFX) window.AudioFX.playHurt();
+    }
     try {
       const res = await apiFetch('/api/score', {
         method: 'POST',
@@ -633,5 +638,6 @@
   fetchState();
 </script>
 
+<script src="sounds.js"></script>
 </body>
 </html>

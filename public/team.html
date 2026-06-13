@@ -276,11 +276,12 @@
       document.body.classList.add('has-item');
       if (navigator.vibrate) navigator.vibrate(200);
       
-      // Trigger jump animation
+      // Trigger jump animation and sound
       if (dino) {
         dino.classList.remove('jumping');
         void dino.offsetWidth; // trigger reflow
         dino.classList.add('jumping');
+        if (window.AudioFX) window.AudioFX.playJump();
       }
     } else {
       itemDisplay.textContent = '';
@@ -294,5 +295,6 @@
   }
 </script>
 
+<script src="sounds.js"></script>
 </body>
 </html>
