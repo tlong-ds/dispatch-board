@@ -72,6 +72,21 @@
     .items-panel {
       display: flex;
       flex-direction: column;
+      flex: 1;
+      overflow-y: auto;
+      transition: flex 0.3s ease;
+    }
+    .items-panel.collapsed {
+      flex: 0 0 auto;
+    }
+    .items-panel.collapsed #bulkItemsTextarea,
+    .items-panel.collapsed #itemsHelperText,
+    .items-panel.collapsed #itemsPanelTitle {
+      display: none;
+    }
+    .teams-panel {
+      flex: 1;
+      overflow-y: auto;
     }
     .panel-header {
       display: flex;
@@ -305,12 +320,15 @@
 </header>
 
 <div class="container">
-  <div class="items-panel">
+  <div class="items-panel" id="itemsPanel">
     <div class="panel-header">
-      <h2>Available Items</h2>
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <button id="toggleItemsBtn" class="btn btn-primary" onclick="toggleItemsPanel()" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" title="Toggle item list">◀</button>
+        <h2 id="itemsPanelTitle">Available Items</h2>
+      </div>
       <span id="saveStatus" style="font-size: 0.875rem; color: var(--success); opacity: 0; transition: opacity 0.3s;">Saved</span>
     </div>
-    <div style="font-size: 0.875rem; color: #9CA3AF; margin-bottom: 0.5rem;">
+    <div id="itemsHelperText" style="font-size: 0.875rem; color: #9CA3AF; margin-bottom: 0.5rem;">
       Each line is an item. Click away to save automatically.
     </div>
     <textarea id="bulkItemsTextarea" placeholder="Type items here, one per line..."></textarea>
@@ -335,6 +353,20 @@
   let currentState = null;
   let isItemsTyping = false;
   let activeDropdownSelections = {}; // To preserve dropdown state
+
+  function toggleItemsPanel() {
+    const panel = document.getElementById('itemsPanel');
+    const btn = document.getElementById('toggleItemsBtn');
+    if (panel.classList.contains('collapsed')) {
+      panel.classList.remove('collapsed');
+      btn.textContent = '◀';
+      btn.title = 'Collapse item list';
+    } else {
+      panel.classList.add('collapsed');
+      btn.textContent = '▶';
+      btn.title = 'Expand item list';
+    }
+  }
 
   function getAdminPassword() {
     let pwd = sessionStorage.getItem('adminPassword');
