@@ -92,8 +92,8 @@
     .tile-tokens{
       position:absolute;
       bottom:2px;left:0;right:0;
-      display:flex;flex-wrap:wrap;justify-content:center;
-      gap:2px;padding:0 2px;
+      display:flex;flex-wrap:nowrap;justify-content:center;
+      gap:0;padding:0 2px;
       /* Counter-rotate so tokens stand vertically on the tilted board */
       transform-origin:50% 100%;
       transform:rotateX(-40deg) translateZ(4px);
@@ -591,7 +591,7 @@ function renderBoard(g, movingPlayerIdx, swapState){
     const iconColor=iS||iE?'#F7F7F7':'#535454';
     const iconHtml=iconKey?pixSVG(iconKey,iconColor,20):'';
     const lbl=iS?`<div class="tile-label">START</div>`:iE?`<div class="tile-label">FINISH</div>`:'';
-    const tks=(tpm[i]||[]).map(p=>{
+    const tks=(tpm[i]||[]).map((p, idx, arr)=>{
       const fs=p.fi===0?'':` filter:${FILTERS[p.fi]};`;
       let klass = 'token';
       if (swapState) {
@@ -601,7 +601,17 @@ function renderBoard(g, movingPlayerIdx, swapState){
         const isMoving = movingPlayerIdx !== undefined && p.playerIndex === movingPlayerIdx;
         if (isMoving) klass += ' hop';
       }
-      return`<img class="${klass}" src="./extracted_assets/media/image2.svg" style="${fs}" title="${esc(p.name)}" alt="${esc(p.name)}">`;
+      
+      const count = arr.length;
+      let extraStyle = '';
+      if (count > 1) {
+        const scale = 0.9;
+        const widthStyle = ` width: calc(clamp(12px, 1.8vw, 20px) * ${scale}); height: calc(clamp(28px, 4.2vw, 48px) * ${scale});`;
+        const marginStyle = idx > 0 ? ` margin-left: -10px;` : '';
+        extraStyle = ` ${widthStyle}${marginStyle} z-index: ${idx}; position: relative;`;
+      }
+      
+      return`<img class="${klass}" src="./extracted_assets/media/image2.svg" style="${fs}${extraStyle}" title="${esc(p.name)}" alt="${esc(p.name)}">`;
     }).join('');
     const ds=iS?'start':iE?'end':'';
     return`<div class="tile" data-e="${eff}" ${ds?`data-s="${ds}"`:''}
