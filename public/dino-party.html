@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dino Party - Board</title>
+  <meta name="description" content="Dino Party board game - host view">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <style>
+    @font-face { font-family:'PressStart2P'; src:url('./PressStart2P-Regular.ttf') format('truetype'); }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    ::-webkit-scrollbar { display: none; }
+    html, body, .info-panel { -ms-overflow-style: none; scrollbar-width: none; }
+    :root{--bg:#F7F7F7;--text:#535454;--white:#fff;}
+    body{font-family:'PressStart2P',system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+
+    /* Header matches dispatch host */
+    header{padding:1.2rem 1.5rem;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+    header h1{margin:0;font-size:1.2rem;text-transform:uppercase;line-height:1.5;}
+    .btn{color:var(--bg);background-color:var(--text);border:4px solid var(--text);padding:.7rem 1.1rem;cursor:pointer;font-family:'PressStart2P',system-ui,sans-serif;font-size:.65rem;transition:transform .1s;}
+    .btn:active{transform:translateY(4px);}
+    .btn-sm{padding:.5rem .8rem;font-size:.55rem;}
+    .hdr-btns{display:flex;gap:.5rem;align-items:center;}
+
+    /* Main layout */
+    .main{display:flex;flex:1;overflow:hidden;padding-bottom:0;gap:1.5rem;padding-left:1.5rem;padding-right:1.5rem;padding-top:.5rem;}
+
+    /* ── 3D Board ── */
+    .board-wrap{
+      flex:2;min-width:0;
+      display:flex;align-items:center;justify-content:center;
+      perspective:900px;
+      perspective-origin:50% 15%;
+      overflow:hidden;
+    }
+
+    .board-3d{
+      /* Constrained to fit the viewport without overflow */
+      width:min(
+        calc(100% - 10px),
+        calc((100vh - 130px) * 1.1)
+      );
+      max-width:440px;
+      aspect-ratio:6/5;
+      display:grid;
+      grid-template-columns:repeat(6,1fr);
+      grid-template-rows:repeat(5,1fr);
+      gap:3px;
+      transform:rotateX(40deg);
+      transform-origin:50% 50%;
+      /* Enable 3D context so tokens can counter-rotate */
+      transform-style:preserve-3d;
+    }
+
+    .tile{
+      border:2px solid var(--text);
+      background:var(--white);
+      position:relative;
+      display:flex;flex-direction:column;
+      align-items:center;justify-content:center;
+      /* overflow:visible lets tokens float above tile surface */
+      overflow:visible;
+      box-shadow:0 4px 0 0 var(--text);
+      transition:box-shadow .15s;
+      /* Pass 3D context down to token children */
+      transform-style:preserve-3d;
+    }
+    .tile:hover{box-shadow:0 6px 0 0 var(--text);}
+
+    .tile-num{
+      position:absolute;top:2px;left:3px;
+      font-size:clamp(.22rem,.55vw,.38rem);
+      color:rgba(83,84,84,.4);line-height:1;
+      /* Clip num/label within tile bounds */
+      pointer-events:none;
+    }
+
+    .tile-icon{
+      display:flex;align-items:center;justify-content:center;
+      pointer-events:none;
+    }
+
+    .tile-icon svg{
+      width:clamp(10px,1.6vw,20px);
+      height:clamp(10px,1.6vw,20px);
+    }
+
+    .tile-label{
+      font-size:clamp(.2rem,.45vw,.32rem);
+      position:absolute;bottom:2px;text-align:center;width:100%;
+    }
+
+    .tile-tokens{
+      position:absolute;
+      bottom:2px;left:0;right:0;
+      display:flex;flex-wrap:wrap;justify-content:center;
+      gap:2px;padding:0 2px;
+      /* Counter-rotate so tokens stand vertically on the tilted board */
+      transform-origin:50% 100%;
+      transform:rotateX(-40deg) translateZ(4px);
+    }
+    .token{
+      width:clamp(12px,1.8vw,20px);
+      /* Tall so the dino stands above the tile surface */
+      height:clamp(28px,4.2vw,48px);
+      object-fit:contain;image-rendering:pixelated;
+      filter:drop-shadow(0 3px 2px rgba(0,0,0,.45));
+    }
+    .token.hop{
+      animation: hop 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+    @keyframes hop {
+      0% { transform: translateY(0) scaleY(1) scaleX(1); }
+      40% { transform: translateY(-24px) scaleY(1.25) scaleX(0.85); }
+      75% { transform: translateY(-24px) scaleY(1.25) scaleX(0.85); }
+      100% { transform: translateY(0) scaleY(0.9) scaleX(1.15); }
+    }
+    .token.float-up{
+      animation: floatUp 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    }
+    .token.float-down{
+      animation: floatDown 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    }
+    @keyframes floatUp {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-48px); }
+    }
+    @keyframes floatDown {
+      0% { transform: translateY(-48px); }
+      100% { transform: translateY(0); }
+    }
+
+    /* Special tiles */
+    .tile[data-s="start"]{background:var(--text);}
+    .tile[data-s="start"] .tile-num{color:rgba(247,247,247,.5);}
+    .tile[data-s="start"] .tile-label{color:var(--bg);}
+    .tile[data-s="end"]{background:var(--text);animation:endPulse 1.4s ease-in-out infinite;}
+    .tile[data-s="end"] .tile-num{color:rgba(247,247,247,.5);}
+    .tile[data-s="end"] .tile-label{color:var(--bg);}
+    @keyframes endPulse{
+      0%,100%{box-shadow:0 5px 0 0 var(--text);}
+      50%{box-shadow:0 5px 0 0 var(--text), 0 0 12px 3px rgba(83,84,84,.4);}
+    }
+
+    /* Effect border styles (monochrome differentiation) */
+    .tile[data-e="obstacle"]{border-width:3px;border-style:solid;}
+    .tile[data-e="boost"]{border-style:solid;}
+    .tile[data-e="swap"]{border-style:dashed;}
+    .tile[data-e="trap"]{border-width:3px;border-style:solid;}
+    .tile[data-e="gift"]{border-style:dotted;border-width:3px;}
+    .tile[data-e="question"]{border-style:double;border-width:3px;}
+
+    /* ── Info panel (matches host style) ── */
+    .info-panel{
+      flex:1;min-width:210px;max-width:280px;
+      display:flex;flex-direction:column;gap:1rem;
+      overflow-y:auto;padding-bottom:1rem;
+    }
+    .pcard{background:var(--white);border:4px solid var(--text);box-shadow:6px 6px 0 var(--text);padding:1rem;transition:box-shadow 0.2s, background 0.2s, transform 0.2s;}
+    .pcard h2{margin:0 0 .7rem;font-size:.65rem;text-transform:uppercase;border-bottom:2px solid var(--text);padding-bottom:.35rem;}
+
+    .pcard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: .7rem;
+      border-bottom: 2px solid var(--text);
+      padding-bottom: .35rem;
+    }
+    .pcard-header h2 {
+      margin: 0 !important;
+      border-bottom: none !important;
+      padding-bottom: 0 !important;
+    }
+    .player-adjuster {
+      display: flex;
+      align-items: center;
+      gap: .3rem;
+    }
+    .adj-btn {
+      font-family: 'PressStart2P', system-ui, sans-serif;
+      font-size: .4rem;
+      padding: .2rem .4rem;
+      background: var(--text);
+      color: var(--bg);
+      border: 2px solid var(--text);
+      cursor: pointer;
+    }
+    .adj-btn:active {
+      transform: translateY(1px);
+    }
+    .adj-val {
+      font-size: .45rem;
+      font-weight: bold;
+      min-width: 15px;
+      text-align: center;
+    }
+
+    .p-row{display:flex;align-items:center;gap:.4rem;padding:.3rem .15rem;border-bottom:1px dashed #ccc;}
+    .p-row:last-child{border-bottom:none;}
+    .p-row.active{font-weight:bold;}
+    .p-arrow{width:12px;font-size:.45rem;color:var(--text);flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+    .p-arrow.active-arrow{animation:arrowHop 0.6s infinite alternate ease-in-out;}
+    @keyframes arrowHop{
+      0%{transform:translateX(0);}
+      100%{transform:translateX(3px);}
+    }
+    .p-dino{width:18px;height:19px;object-fit:contain;image-rendering:pixelated;flex-shrink:0;}
+    .p-info{flex:1;min-width:0;}
+    .p-name{font-size:.4rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .p-pos{font-size:.33rem;color:#777;margin-top:2px;}
+    .p-turn{font-size:.28rem;background:var(--bg);color:var(--text);padding:1px 4px;flex-shrink:0;}
+    .skip-badge{font-size:.28rem;background:var(--text);color:var(--bg);margin-left:3px;padding:1px 3px;}
+
+    /* Last roll redesign */
+    .roll-card{text-align:center;position:relative;}
+    .roll-card.pulse-notification{
+      animation: notifyFlash 0.8s ease-out 2;
+    }
+    @keyframes notifyFlash {
+      0% { box-shadow: 6px 6px 0 var(--text); background: var(--white); }
+      50% { box-shadow: 8px 8px 12px rgba(83,84,84,0.5); background: #FFFFD0; transform: scale(1.03); }
+      100% { box-shadow: 6px 6px 0 var(--text); background: var(--white); }
+    }
+    .roll-header{display:flex;align-items:center;justify-content:center;gap:.4rem;margin-bottom:.4rem;}
+    .roll-dino{width:20px;height:22px;object-fit:contain;image-rendering:pixelated;flex-shrink:0;}
+    .roll-display{display:flex;align-items:center;justify-content:center;gap:1.2rem;margin:.5rem 0;}
+    .roll-arrow{font-size:.8rem;color:var(--text);animation: arrowPulse 0.6s infinite alternate;}
+    @keyframes arrowPulse { from { opacity: 0.3; } to { opacity: 1; } }
+    .roll-fx-icon{width:48px;height:48px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .roll-fx-icon svg{width:100%;height:100%;}
+    .dice-wrap{width:52px;height:52px;margin:.4rem auto;}
+    .dice-wrap svg{width:100%;height:100%;}
+    .roll-who{font-size:.4rem;margin-top:.2rem;}
+    .roll-val{font-size:.35rem;color:#777;}
+    .roll-fx{font-size:.4rem;margin-top:.4rem;padding:.4rem;border:2px solid var(--text);line-height:1.7;word-break:break-word;text-align:left;background:var(--bg);}
+
+    /* Legend */
+    .legend{display:flex;flex-direction:column;gap:.3rem;}
+    .leg-item{display:flex;align-items:center;gap:.4rem;font-size:.35rem;}
+    .leg-sw{width:12px;height:12px;border:2px solid var(--text);flex-shrink:0;background:var(--white);}
+
+    /* No-game */
+    .no-game{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:1.2rem;text-align:center;}
+    .no-game-icon{width:60px;height:60px;}
+    .no-game-icon svg{width:100%;height:100%;}
+    .no-game-t{font-size:.6rem;line-height:2.2;}
+
+    /* Winner overlay */
+    #winnerOv{display:none;position:fixed;inset:0;background:rgba(83,84,84,.92);z-index:1000;flex-direction:column;align-items:center;justify-content:center;}
+    #confettiCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1001;}
+    .win-box{text-align:center;animation:winPop .4s cubic-bezier(.22,1,.36,1);z-index:1002;position:relative;}
+    @keyframes winPop{from{transform:scale(.3);opacity:0;}to{transform:scale(1);opacity:1;}}
+    .win-icon{width:80px;height:80px;margin:0 auto 1rem;animation:tb .6s ease-in-out infinite alternate;}
+    @keyframes tb{from{transform:translateY(0);}to{transform:translateY(-12px);}}
+    .win-icon svg{width:100%;height:100%;}
+    .win-name{font-size:1.6rem;color:var(--bg);margin:.7rem 0 .3rem;line-height:1.4;}
+    .win-sub{font-size:.6rem;color:rgba(247,247,247,.6);margin-bottom:1.5rem;}
+    .win-continue{font-family:'PressStart2P',system-ui,sans-serif;font-size:.7rem;padding:.9rem 2rem;background:var(--bg);color:var(--text);border:4px solid var(--bg);cursor:pointer;box-shadow:4px 4px 0 rgba(247,247,247,.3);}
+    .win-continue:active{transform:translateY(3px);}
+
+    /* QR Modal */
+    #qrModal{display:none;position:fixed;inset:0;background:rgba(83,84,84,.8);z-index:900;align-items:center;justify-content:center;}
+    .qr-box{background:var(--bg);border:4px solid var(--text);box-shadow:8px 8px 0 var(--text);padding:1.5rem;max-width:88vw;max-height:88vh;overflow-y:auto;}
+    .qr-box h2{font-size:.8rem;text-align:center;margin-bottom:1.2rem;text-transform:uppercase;}
+    .qr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1.2rem;}
+    .qr-card{text-align:center;}
+    .qr-card img.qi{width:110px;height:110px;border:4px solid var(--text);display:block;margin:0 auto .4rem;}
+    .qr-pname{font-size:.42rem;word-break:break-all;}
+    .qr-url{font-size:.28rem;color:#888;margin-top:3px;word-break:break-all;}
+    .close-btn{font-family:'PressStart2P',system-ui,sans-serif;font-size:.58rem;padding:.55rem 1.4rem;background:var(--text);color:var(--bg);border:4px solid var(--text);cursor:pointer;margin:1.2rem auto 0;display:block;}
+    .close-btn:active{transform:translateY(3px);}
+
+    /* Question & Swap Overlay */
+    #questionOv, #swapOv{display:none;position:fixed;inset:0;background:rgba(83,84,84,.85);z-index:950;align-items:center;justify-content:center;}
+    .q-box{background:var(--bg);border:4px solid var(--text);box-shadow:8px 8px 0 var(--text);padding:1.5rem;max-width:440px;width:100%;text-align:center;position:relative;animation:winPop .2s cubic-bezier(.22,1,.36,1);}
+    .q-title{font-size:.65rem;margin-bottom:.8rem;letter-spacing:1px;text-transform:uppercase;border-bottom:2px solid var(--text);padding-bottom:.4rem;}
+    .q-dino-wrap{width:40px;height:40px;margin:0 auto .5rem;position:relative;}
+    .q-dino-icon{width:100%;height:100%;object-fit:contain;image-rendering:pixelated;display:block;}
+    .q-text{font-size:.5rem;line-height:1.8;margin:.6rem 0;color:var(--text);font-weight:bold;word-break:break-word;}
+    .q-options{display:flex;flex-direction:column;gap:.4rem;margin:1rem 0;text-align:left;}
+    .q-opt{font-size:.4rem;padding:.4rem;border:2px solid var(--text);background:var(--white);}
+    .q-ans-block{display:none;font-size:.45rem;padding:.5rem;border:3px solid var(--text);background:#E6F4EA;color:#137333;margin:1rem 0;word-break:break-word;}
+    .q-action-row{display:flex;justify-content:center;gap:.6rem;margin-top:1.2rem;}
+    .q-btn{font-family:'PressStart2P',system-ui,sans-serif;font-size:.4rem;padding:.5rem .9rem;cursor:pointer;}
+    .q-btn.reveal{background:var(--text);color:var(--bg);border:3px solid var(--text);}
+    .q-btn.correct{background:#137333;color:#fff;border:3px solid #137333;}
+    .q-btn.wrong{background:#c5221f;color:#fff;border:3px solid #c5221f;}
+    .q-btn:active{transform:translateY(2px);}
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Dino Party</h1>
+  <div class="hdr-btns">
+    <button class="btn btn-sm" onclick="showQr()">QR CODES</button>
+    <button class="btn btn-sm" onclick="setupGame()">SETUP GAME</button>
+    <button class="btn btn-sm" onclick="resetGame()">RESET</button>
+    <button class="btn btn-sm" onclick="window.location.href='/'">EXIT</button>
+  </div>
+</header>
+
+<div class="main">
+  <div class="board-wrap">
+    <div class="board-3d" id="boardGrid"></div>
+  </div>
+
+  <div class="info-panel">
+    <div class="pcard roll-card">
+      <h2>Last Roll</h2>
+      <div id="lastRollEl"><div style="font-size:.4rem;color:#aaa;text-align:center;padding:.5rem;">No rolls yet</div></div>
+    </div>
+    <div class="pcard">
+      <div class="pcard-header">
+        <h2>Players</h2>
+        <div class="player-adjuster">
+          <button class="adj-btn" onclick="removePlayer(this)">−</button>
+          <span class="adj-val" id="playerCountVal">0</span>
+          <button class="adj-btn" onclick="addPlayer(this)">+</button>
+        </div>
+      </div>
+      <div id="playerListEl"><div style="font-size:.4rem;color:#aaa;">Game not started</div></div>
+    </div>
+    <!-- Questions Card -->
+    <div class="pcard">
+      <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="toggleQuestions()">
+        <h2 style="margin:0; font-size:.65rem; text-transform:uppercase; border-bottom:none; padding-bottom:0;">Questions</h2>
+        <span id="questionsArrow" style="font-size:0.6rem;">▼</span>
+      </div>
+      <div id="questionsContent" style="display:none; margin-top:.7rem; border-top:2px solid var(--text); padding-top:.7rem;">
+        <div style="font-size:.38rem; color:rgba(83,84,84,.7); margin-bottom:.5rem; line-height:1.4;">
+          Format: One question per line. Click away to save automatically.
+        </div>
+        <textarea id="questionsTextarea" style="width:100%; height:130px; font-family:'PressStart2P',system-ui,sans-serif; font-size:0.4rem; border:3px solid var(--text); padding:6px; resize:vertical; background:var(--bg); color:var(--text); box-sizing:border-box; line-height:1.4;" placeholder="Type questions here, one per line..." onfocus="isQuestionsTyping=true;" onblur="isQuestionsTyping=false; saveQuestions();"></textarea>
+        <div id="qSaveStatus" style="font-size:.38rem; color:rgba(83,84,84,.5); text-align:right; margin-top:3px; height:8px; opacity:0; transition:opacity .2s;">Saved!</div>
+      </div>
+    </div>
+
+    <!-- Legend Card -->
+    <div class="pcard">
+      <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="toggleLegend()">
+        <h2 style="margin:0; font-size:.65rem; text-transform:uppercase; border-bottom:none; padding-bottom:0;">Legend</h2>
+        <span id="legendArrow" style="font-size:0.6rem;">▼</span>
+      </div>
+      <div class="legend" id="legendContent" style="display:none; margin-top:.7rem; border-top:2px solid var(--text); padding-top:.7rem;">
+        <div class="leg-item"><div class="leg-sw" style="border-width:3px;border-style:solid;"></div>Obstacle (back 2)</div>
+        <div class="leg-item"><div class="leg-sw" style="border-style:solid;"></div>Boost (fwd 3)</div>
+        <div class="leg-item"><div class="leg-sw" style="border-style:dashed;"></div>Swap ahead</div>
+        <div class="leg-item"><div class="leg-sw" style="border-width:3px;border-style:solid;"></div>Trap (skip)</div>
+        <div class="leg-item"><div class="leg-sw" style="border-style:dotted;border-width:3px;"></div>Gift (roll again)</div>
+        <div class="leg-item"><div class="leg-sw" style="border-style:double;border-width:3px;"></div>Question Block</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="winnerOv">
+  <canvas id="confettiCanvas"></canvas>
+  <div class="win-box">
+    <div class="win-icon" id="winIconEl"></div>
+    <div class="win-name" id="winNameEl">WINNER!</div>
+    <div class="win-sub">WINS THE RACE</div>
+    <button class="win-continue" onclick="closeWinner()">CONTINUE</button>
+  </div>
+</div>
+
+<div id="questionOv">
+  <div class="q-box">
+    <div class="q-title" id="qTitle">QUESTION BLOCK</div>
+    <div class="q-dino-wrap">
+      <img class="q-dino-icon" id="qDino" src="./extracted_assets/media/image2.svg" alt="">
+    </div>
+    <div class="q-text" id="qText">Loading question...</div>
+    <div class="q-options" id="qOptions"></div>
+    <div class="q-ans-block" id="qAnsBlock"></div>
+    <div class="q-action-row">
+      <button class="q-btn reveal" id="qRevealBtn" onclick="revealAnswer()">REVEAL ANSWER</button>
+      <button class="q-btn correct" id="qCorrectBtn" style="display:none;" onclick="submitAnswer(true)">CORRECT (+2)</button>
+      <button class="q-btn wrong" id="qWrongBtn" style="display:none;" onclick="submitAnswer(false)">WRONG (-1)</button>
+    </div>
+  </div>
+</div>
+
+<div id="swapOv" style="display:none;position:fixed;inset:0;background:rgba(83,84,84,.85);z-index:950;align-items:center;justify-content:center;">
+  <div class="q-box">
+    <div class="q-title">SWAP CHALLENGE</div>
+    <div style="display:flex;justify-content:center;align-items:center;margin:1rem 0;gap:1.5rem;">
+      <div class="q-dino-wrap" style="margin:0;"><img class="q-dino-icon" id="swapChallengerDino" src="./extracted_assets/media/image2.svg" alt=""></div>
+      <span style="font-size:.65rem;font-weight:bold;">VS</span>
+      <div class="q-dino-wrap" style="margin:0;"><img class="q-dino-icon" id="swapTargetDino" src="./extracted_assets/media/image2.svg" style="opacity:0.4;" alt=""></div>
+    </div>
+    <div class="q-text" id="swapText">Select team to challenge:</div>
+    <div style="margin:1rem 0;">
+      <select id="swapTargetSelect" onchange="updateSwapTargetDino()" style="font-family:'PressStart2P',system-ui,sans-serif;font-size:0.5rem;padding:6px;border:3px solid var(--text);background:var(--bg);color:var(--text);width:100%;box-sizing:border-box;">
+      </select>
+    </div>
+    <div class="q-action-row">
+      <button class="q-btn correct" onclick="submitSwap(true)">ACCEPT (SWAP)</button>
+      <button class="q-btn wrong" onclick="submitSwap(false)">REJECT (NO SWAP)</button>
+    </div>
+  </div>
+</div>
+
+<div id="qrModal" onclick="if(event.target===this)closeQr()">
+  <div class="qr-box">
+    <h2>Scan to Play</h2>
+    <div class="qr-grid" id="qrGridEl"></div>
+    <button class="close-btn" onclick="closeQr()">CLOSE</button>
+  </div>
+</div>
+
+<script>
+const API='__API_BASE_URL__'.startsWith('__')?'http://localhost:3000':'__API_BASE_URL__';
+
+/* ── 8-bit pixel art icons (8x8 grids → SVG rects) ── */
+const PIX={
+  obstacle:[[0,0,1,1,0,0,0,0],[0,0,1,1,0,0,0,0],[0,0,1,1,0,0,0,0],[0,0,1,1,0,0,0,0],[1,1,1,1,1,1,0,0],[0,1,1,1,1,0,0,0],[0,0,1,1,0,0,0,0],[0,0,0,0,0,0,0,0]],
+  boost:   [[0,0,1,1,0,0,0,0],[0,1,1,1,1,0,0,0],[1,1,1,1,1,1,0,0],[0,0,1,1,0,0,0,0],[0,0,1,1,0,0,0,0],[0,0,1,1,0,0,0,0],[0,0,1,1,0,0,0,0],[0,0,0,0,0,0,0,0]],
+  swap:    [[1,1,0,0,0,0,1,1],[1,1,1,0,0,1,1,1],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,1,1,1,1,0,0],[0,1,1,1,1,1,1,0],[1,1,1,0,0,1,1,1],[1,1,0,0,0,0,1,1]],
+  trap:    [[0,0,1,1,1,1,0,0],[0,1,1,1,1,1,1,0],[1,1,0,1,1,0,1,1],[1,1,0,1,1,0,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,0],[0,1,0,1,1,0,1,0],[0,0,0,0,0,0,0,0]],
+  gift:    [[0,1,1,1,1,1,1,0],[1,0,0,0,0,0,0,1],[1,0,1,0,0,0,0,1],[1,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,1],[1,0,0,0,0,1,0,1],[1,0,0,0,0,0,0,1],[0,1,1,1,1,1,1,0]],
+  start:   [[0,1,1,1,1,1,0,0],[0,1,1,1,1,1,0,0],[0,1,0,0,0,0,0,0],[0,1,0,0,0,0,0,0],[0,1,0,0,0,0,0,0],[0,1,0,0,0,0,0,0],[0,1,0,0,0,0,0,0],[0,0,0,0,0,0,0,0]],
+  finish:  [[1,1,0,0,1,1,0,0],[1,1,0,0,1,1,0,0],[0,0,1,1,0,0,1,1],[0,0,1,1,0,0,1,1],[1,1,0,0,1,1,0,0],[1,1,0,0,1,1,0,0],[0,0,1,1,0,0,1,1],[0,0,1,1,0,0,1,1]],
+  trophy:  [[0,0,1,1,1,1,0,0],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0],[0,0,0,1,1,0,0,0],[0,0,1,1,1,1,0,0],[0,1,1,1,1,1,1,0],[0,0,0,0,0,0,0,0]],
+  dice:    [[0,0,1,1,1,1,0,0],[0,1,1,1,1,1,1,0],[1,1,0,1,0,1,1,1],[1,1,0,0,0,0,1,1],[1,1,1,0,1,0,1,1],[1,1,0,0,0,0,1,1],[0,1,1,1,1,1,1,0],[0,0,1,1,1,1,0,0]],
+  question:[[0,0,1,1,1,0,0,0],[0,1,0,0,0,1,0,0],[0,0,0,0,1,0,0,0],[0,0,0,1,0,0,0,0],[0,0,0,1,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,1,0,0,0,0],[0,0,0,0,0,0,0,0]]
+};
+
+function pixSVG(key, color, size){
+  const px=PIX[key]; if(!px) return '';
+  const rects=[];
+  px.forEach((row,y)=>row.forEach((on,x)=>{if(on)rects.push(`<rect x="${x}" y="${y}" width="1" height="1" fill="${color}"/>`);}));
+  return`<svg viewBox="0 0 8 8" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">${rects.join('')}</svg>`;
+}
+
+/* Dice face SVG (for last-roll display) */
+const DOTS={
+  1:[[4,4]],
+  2:[[2.2,2.2],[5.8,5.8]],
+  3:[[2.2,2.2],[4,4],[5.8,5.8]],
+  4:[[2.2,2.2],[5.8,2.2],[2.2,5.8],[5.8,5.8]],
+  5:[[2.2,2.2],[5.8,2.2],[4,4],[2.2,5.8],[5.8,5.8]],
+  6:[[2.2,2.2],[5.8,2.2],[2.2,4],[5.8,4],[2.2,5.8],[5.8,5.8]]
+};
+function diceSVG(f,sz){
+  const dots=(DOTS[f]||DOTS[1]).map(([x,y])=>`<rect x="${x-0.8}" y="${y-0.8}" width="1.6" height="1.6" rx="0.3" fill="#535454"/>`).join('');
+  return`<svg viewBox="0 0 8 8" ${sz?`width="${sz}" height="${sz}"`:''} xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+    <rect x="0.5" y="0.5" width="7" height="7" rx="1" fill="#fff" stroke="#535454" stroke-width="0.8"/>
+    ${dots}</svg>`;
+}
+
+/* Team color filters */
+const FILTERS=['none','sepia(1) saturate(8) hue-rotate(185deg)','sepia(1) saturate(8) hue-rotate(295deg)','sepia(1) saturate(8) hue-rotate(40deg) brightness(1.1)','sepia(1) saturate(8) hue-rotate(260deg)','sepia(1) saturate(8) hue-rotate(148deg)'];
+
+/* Tile grid position */
+function tpos(i){const r=Math.floor(i/6);return{gr:5-r,gc:(r%2===0?i%6:5-i%6)+1};}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+let gs=null,lhash='',winShown=false;
+let isAnimating = false;
+let pendingState = null;
+let activeQuestion = null;
+let isQuestionsTyping = false;
+const sleep = ms => new Promise(res => setTimeout(res, ms));
+const FX_ICON={obstacle:'obstacle',boost:'boost',swap:'swap',trap:'trap',gift:'gift',win:'trophy',none:'dice',question:'question'};
+
+const QUESTIONS = [
+  { q: "What does CSS stand for?", a: "", o: [] },
+  { q: "Which HTML tag is used to define an internal style sheet?", a: "", o: [] },
+  { q: "Which programming language is known as the language of the web?", a: "", o: [] },
+  { q: "What does HTML stand for?", a: "", o: [] },
+  { q: "Which CSS property controls the text size?", a: "", o: [] },
+  { q: "How do you write 'Hello World' in an alert box?", a: "", o: [] },
+  { q: "Which sign is used for jQuery?", a: "", o: [] },
+  { q: "What is the correct way to write a JavaScript array?", a: "", o: [] },
+  { q: "Which tag is used to create a hyperlink in HTML?", a: "", o: [] },
+  { q: "What is the default port for HTTP?", a: "", o: [] },
+  { q: "What is the default port for HTTPS?", a: "", o: [] },
+  { q: "Which SQL statement is used to extract data from a database?", a: "", o: [] },
+  { q: "In Git, how do you download changes from a remote repository without merging?", a: "", o: [] },
+  { q: "What does API stand for?", a: "", o: [] },
+  { q: "Which of the following is NOT a JavaScript framework/library?", a: "", o: [] }
+];
+
+function toggleLegend() {
+  const content = document.getElementById('legendContent');
+  const arrow = document.getElementById('legendArrow');
+  if (content.style.display === 'none') {
+    content.style.display = 'flex';
+    arrow.textContent = '▲';
+  } else {
+    content.style.display = 'none';
+    arrow.textContent = '▼';
+  }
+}
+
+function toggleQuestions() {
+  const content = document.getElementById('questionsContent');
+  const arrow = document.getElementById('questionsArrow');
+  if (content.style.display === 'none') {
+    content.style.display = 'block';
+    arrow.textContent = '▲';
+  } else {
+    content.style.display = 'none';
+    arrow.textContent = '▼';
+  }
+}
+
+function renderQuestionsEditor(g) {
+  if (isQuestionsTyping || !g || !g.questions) return;
+  const textarea = document.getElementById('questionsTextarea');
+  if (!textarea || document.activeElement === textarea) return;
+  const text = g.questions.map(q => q.q).join('\n');
+  textarea.value = text;
+}
+
+async function saveQuestions() {
+  const textarea = document.getElementById('questionsTextarea');
+  if (!textarea) return;
+  const text = textarea.value;
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const questions = lines.map(line => ({ q: line, a: '', o: [] }));
+  
+  if (questions.length === 0 && text.trim().length > 0) return;
+  
+  try {
+    const r = await af('/api/dino-party/questions', {
+      method: 'POST',
+      body: JSON.stringify({ questions })
+    });
+    const d = await r.json();
+    if (d.success) {
+      const status = document.getElementById('qSaveStatus');
+      status.style.opacity = 1;
+      setTimeout(() => { status.style.opacity = 0; }, 1500);
+      if (gs) gs.questions = questions;
+    }
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+function playTick(){
+  try{
+    const c=new(window.AudioContext||window.webkitAudioContext)();
+    const o=c.createOscillator(),g=c.createGain();
+    o.type='square';
+    o.frequency.setValueAtTime(600,c.currentTime);
+    g.gain.setValueAtTime(.05,c.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.04);
+    o.connect(g);g.connect(c.destination);
+    o.start();o.stop(c.currentTime+.05);
+  }catch(e){}
+}
+
+function playEffectSound(eff){
+  try{
+    const c=new(window.AudioContext||window.webkitAudioContext)();
+    const o=c.createOscillator(),g=c.createGain();
+    if(eff==='boost'||eff==='gift'||eff==='swap'||eff==='question'){
+      o.type='square';
+      o.frequency.setValueAtTime(440,c.currentTime);
+      o.frequency.exponentialRampToValueAtTime(880,c.currentTime+.25);
+      g.gain.setValueAtTime(.08,c.currentTime);
+      g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.25);
+    }else if(eff==='obstacle'||eff==='trap'){
+      o.type='sawtooth';
+      o.frequency.setValueAtTime(180,c.currentTime);
+      o.frequency.exponentialRampToValueAtTime(70,c.currentTime+.28);
+      g.gain.setValueAtTime(.12,c.currentTime);
+      g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.28);
+    }else{
+      return;
+    }
+    o.connect(g);g.connect(c.destination);
+    o.start();o.stop(c.currentTime+.3);
+  }catch(e){}
+}
+
+function renderBoard(g, movingPlayerIdx, swapState){
+  const el=document.getElementById('boardGrid');
+  if(!g||(!g.gameStarted&&!g.tiles?.length)){
+    el.innerHTML=`<div class="no-game"><div class="no-game-icon">${pixSVG('dice','#535454',60)}</div><div class="no-game-t">Game not set up.<br><br>Click SETUP GAME.</div></div>`;
+    return;
+  }
+  const tpm={};(g.players||[]).forEach((p,i)=>{if(!tpm[p.position])tpm[p.position]=[];tpm[p.position].push({name:p.name,fi:i%FILTERS.length,playerIndex:i});});
+  el.innerHTML=(g.tiles||[]).map((t,i)=>{
+    const {gr,gc}=tpos(i);const iS=i===0,iE=i===29;
+    const eff=(iS||iE)?'none':(t.effect||'none');
+    const iconKey=iE?'finish':(iS?'start':(eff!=='none'?eff:null));
+    const iconColor=iS||iE?'#F7F7F7':'#535454';
+    const iconHtml=iconKey?pixSVG(iconKey,iconColor,20):'';
+    const lbl=iS?`<div class="tile-label">START</div>`:iE?`<div class="tile-label">FINISH</div>`:'';
+    const tks=(tpm[i]||[]).map(p=>{
+      const fs=p.fi===0?'':` filter:${FILTERS[p.fi]};`;
+      let klass = 'token';
+      if (swapState) {
+        if (swapState.up && swapState.up.includes(p.playerIndex)) klass += ' float-up';
+        else if (swapState.down && swapState.down.includes(p.playerIndex)) klass += ' float-down';
+      } else {
+        const isMoving = movingPlayerIdx !== undefined && p.playerIndex === movingPlayerIdx;
+        if (isMoving) klass += ' hop';
+      }
+      return`<img class="${klass}" src="./extracted_assets/media/image2.svg" style="${fs}" title="${esc(p.name)}" alt="${esc(p.name)}">`;
+    }).join('');
+    const ds=iS?'start':iE?'end':'';
+    return`<div class="tile" data-e="${eff}" ${ds?`data-s="${ds}"`:''}
+       style="grid-row:${gr};grid-column:${gc};">
+      <div class="tile-num">${i+1}</div>
+      <div class="tile-icon">${iconHtml}</div>
+      ${lbl}
+      <div class="tile-tokens">${tks}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderPlayers(g){
+  const el=document.getElementById('playerListEl');
+  if (document.getElementById('playerCountVal')) {
+    document.getElementById('playerCountVal').textContent = g?.players?.length || 0;
+  }
+  if(!g||!g.players?.length){el.innerHTML='<div style="font-size:.4rem;color:#aaa;">No players yet</div>';return;}
+  const cur=g.players[g.currentPlayerIndex];
+  el.innerHTML=g.players.map((p,i)=>{
+    const act=g.gameStarted&&cur&&p.teamId===cur.teamId;
+    const fs=i===0?'':` filter:${FILTERS[i%FILTERS.length]};`;
+    const sk=p.skipNextTurn?`<span class="skip-badge">SKIP</span>`:'';
+    return`<div class="p-row${act?' active':''}" style="padding:.2rem .1rem;">
+      <div class="p-arrow ${act?'active-arrow':''}">${act?'▶':''}</div>
+      <img class="p-dino" src="./extracted_assets/media/image2.svg" style="${fs}" alt="">
+      <div class="p-info"><div class="p-name" style="font-size:.38rem;">${esc(p.name)}${sk}</div><div class="p-pos" style="font-size:.35rem;">Tile ${p.position+1} / 30</div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderRoll(g, pulse){
+  const el=document.getElementById('lastRollEl');const lr=g?.lastRoll;
+  const card=el.closest('.pcard');
+  if(!lr?.playerName){
+    el.innerHTML='<div style="font-size:.4rem;color:#aaa;text-align:center;padding:.5rem;">No rolls yet</div>';
+    card.classList.remove('pulse-notification');
+    return;
+  }
+  const pIdx = g.players.findIndex(p => p.teamId.toString() === lr.teamId.toString());
+  const fs = pIdx === -1 || pIdx === 0 ? '' : ` filter:${FILTERS[pIdx % FILTERS.length]};`;
+  
+  const hasEffect = lr.effect && lr.effect !== 'none';
+  const displayHtml = hasEffect ? 
+    `<div class="roll-display"><div class="dice-wrap" style="margin:0;">${diceSVG(lr.value,44)}</div><span class="roll-arrow">➔</span><div class="roll-fx-icon">${pixSVG(FX_ICON[lr.effect],'#535454',40)}</div></div>` :
+    `<div class="roll-display"><div class="dice-wrap" style="margin:0;">${diceSVG(lr.value,48)}</div></div>`;
+    
+  el.innerHTML=`
+    <div class="roll-header">
+      <img class="roll-dino" src="./extracted_assets/media/image2.svg" style="${fs}">
+      <span class="roll-who"><b>${esc(lr.playerName)}</b></span>
+    </div>
+    ${displayHtml}
+    <div class="roll-val">${lr.value > 0 ? 'rolled ' + lr.value : 'turn skipped'}</div>
+    ${lr.effectDescription ? `<div class="roll-fx">${esc(lr.effectDescription)}</div>` : ''}
+  `;
+  
+  if (pulse) {
+    card.classList.remove('pulse-notification');
+    void card.offsetWidth;
+    card.classList.add('pulse-notification');
+  }
+}
+
+function checkWin(g){
+  if(g.winnerName&&!winShown){
+    winShown=true;
+    document.getElementById('winNameEl').textContent=g.winnerName;
+    document.getElementById('winIconEl').innerHTML=pixSVG('trophy','#F7F7F7',80);
+    document.getElementById('winnerOv').style.display='flex';
+    fireConfetti();playV();
+  }
+  if(!g.winnerName)winShown=false;
+}
+function closeWinner(){document.getElementById('winnerOv').style.display='none';}
+
+async function animateTurn(g) {
+  isAnimating = true;
+  pendingState = g;
+  
+  const pIdx = gs.players.findIndex(p => p.teamId.toString() === g.lastRoll.teamId.toString());
+  if (pIdx === -1) {
+    gs = g; lhash = JSON.stringify(g);
+    renderBoard(g); renderPlayers(g); renderRoll(g); checkWin(g);
+    isAnimating = false;
+    return;
+  }
+  
+  const startPos = gs.players[pIdx].position;
+  const rollVal = g.lastRoll.value || 0;
+  const midPos = Math.min(29, startPos + rollVal);
+  const finalPos = g.players[pIdx].position;
+  
+  const animState = JSON.parse(JSON.stringify(gs));
+  
+  // 1. Roll walk animation
+  if (rollVal > 0 && startPos !== midPos) {
+    const stepDirection = startPos < midPos ? 1 : -1;
+    let curr = startPos;
+    while (curr !== midPos) {
+      curr += stepDirection;
+      animState.players[pIdx].position = curr;
+      renderBoard(animState, pIdx);
+      playTick();
+      await sleep(300);
+    }
+  }
+  
+  await sleep(400);
+  
+  // 2. Tile effect animation
+  const effect = g.lastRoll.effect || 'none';
+  if (effect === 'boost' || effect === 'obstacle') {
+    const stepDirection = midPos < finalPos ? 1 : -1;
+    let curr = midPos;
+    while (curr !== finalPos) {
+      curr += stepDirection;
+      animState.players[pIdx].position = curr;
+      renderBoard(animState, pIdx);
+      playTick();
+      await sleep(300);
+    }
+  } else if (effect === 'swap' && midPos !== finalPos) {
+    const targetIdx = gs.players.findIndex((p, idx) => idx !== pIdx && p.position === finalPos);
+    if (targetIdx !== -1) {
+      // 1. Float both players up
+      renderBoard(animState, undefined, { up: [pIdx, targetIdx] });
+      playEffectSound('swap');
+      await sleep(800);
+      
+      // 2. Perform the position swap in the air
+      animState.players[pIdx].position = finalPos;
+      animState.players[targetIdx].position = midPos;
+      renderBoard(animState, undefined, { up: [pIdx, targetIdx] });
+      await sleep(200);
+      
+      // 3. Drop them down
+      renderBoard(animState, undefined, { down: [pIdx, targetIdx] });
+      playTick();
+      await sleep(800);
+    } else {
+      animState.players[pIdx].position = finalPos;
+      renderBoard(animState);
+    }
+  } else {
+    animState.players[pIdx].position = finalPos;
+    renderBoard(animState, pIdx);
+  }
+  
+  playEffectSound(effect);
+  
+  renderBoard(g);
+  renderPlayers(g);
+  renderRoll(g, true); // Flash unified notification in sidebar!
+  
+  // 3. Question & Swap Popup handling
+  if (effect === 'question') {
+    gs = g;
+    lhash = JSON.stringify(g);
+    showQuestionPopup(g.lastRoll.teamId, pIdx);
+  } else if (effect === 'swap' && rollVal > 0) {
+    gs = g;
+    lhash = JSON.stringify(g);
+    showSwapPopup(g.lastRoll.teamId, pIdx);
+  } else {
+    gs = g;
+    lhash = JSON.stringify(g);
+    checkWin(g);
+    pendingState = null;
+    isAnimating = false;
+  }
+}
+
+function showQuestionPopup(teamId, pIdx) {
+  const ov = document.getElementById('questionOv');
+  const dinoImg = document.getElementById('qDino');
+  const qText = document.getElementById('qText');
+  const qOptions = document.getElementById('qOptions');
+  const qAnsBlock = document.getElementById('qAnsBlock');
+  
+  const revealBtn = document.getElementById('qRevealBtn');
+  const correctBtn = document.getElementById('qCorrectBtn');
+  const wrongBtn = document.getElementById('qWrongBtn');
+  
+  const pool = (gs && gs.questions && gs.questions.length > 0) ? gs.questions : QUESTIONS;
+  activeQuestion = pool[Math.floor(Math.random() * pool.length)];
+  
+  dinoImg.style.filter = pIdx === 0 ? '' : FILTERS[pIdx % FILTERS.length];
+  qText.textContent = activeQuestion.q;
+  
+  const hasOptions = activeQuestion.o && activeQuestion.o.length > 0;
+  const hasAnswer = !!activeQuestion.a;
+  
+  if (hasOptions) {
+    qOptions.style.display = 'block';
+    qOptions.innerHTML = activeQuestion.o.map((opt, i) => `
+      <div class="q-opt"><b>${String.fromCharCode(65 + i)}.</b> ${esc(opt)}</div>
+    `).join('');
+  } else {
+    qOptions.style.display = 'none';
+    qOptions.innerHTML = '';
+  }
+  
+  qAnsBlock.style.display = 'none';
+  if (hasAnswer) {
+    qAnsBlock.innerHTML = `<b>Correct Answer:</b> ${esc(activeQuestion.a)}`;
+    revealBtn.style.display = 'block';
+    correctBtn.style.display = 'none';
+    wrongBtn.style.display = 'none';
+  } else {
+    qAnsBlock.innerHTML = '';
+    revealBtn.style.display = 'none';
+    correctBtn.style.display = 'block';
+    wrongBtn.style.display = 'block';
+  }
+  
+  ov.style.display = 'flex';
+}
+
+function revealAnswer() {
+  document.getElementById('qAnsBlock').style.display = 'block';
+  document.getElementById('qRevealBtn').style.display = 'none';
+  document.getElementById('qCorrectBtn').style.display = 'block';
+  document.getElementById('qWrongBtn').style.display = 'block';
+  playEffectSound('gift');
+}
+
+async function submitAnswer(correct) {
+  if (!pendingState || !activeQuestion) return;
+  const teamId = pendingState.lastRoll.teamId;
+  
+  try {
+    const r = await af('/api/dino-party/question-result', {
+      method: 'POST',
+      body: JSON.stringify({ teamId, correct })
+    });
+    const d = await r.json();
+    if (d.success) {
+      closeQuestionPopup();
+      lhash = '';
+      await fetchState();
+    } else {
+      alert('Error saving result.');
+    }
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+function closeQuestionPopup() {
+  document.getElementById('questionOv').style.display = 'none';
+  activeQuestion = null;
+  isAnimating = false;
+}
+
+function showSwapPopup(teamId, pIdx) {
+  const ov = document.getElementById('swapOv');
+  const challengerDino = document.getElementById('swapChallengerDino');
+  const targetSelect = document.getElementById('swapTargetSelect');
+  
+  challengerDino.style.filter = pIdx === 0 ? '' : FILTERS[pIdx % FILTERS.length];
+  
+  const otherPlayers = gs.players.map((p, idx) => ({ ...p, originalIndex: idx })).filter(p => p.originalIndex !== pIdx);
+  
+  targetSelect.innerHTML = otherPlayers.map(p => `
+    <option value="${p.teamId}" data-filter="${p.originalIndex % FILTERS.length}">${esc(p.name)} (tile ${p.position + 1})</option>
+  `).join('');
+  
+  updateSwapTargetDino();
+  ov.style.display = 'flex';
+}
+
+function updateSwapTargetDino() {
+  const select = document.getElementById('swapTargetSelect');
+  const selectedOpt = select.options[select.selectedIndex];
+  const targetDino = document.getElementById('swapTargetDino');
+  
+  if (selectedOpt) {
+    const filterIdx = parseInt(selectedOpt.getAttribute('data-filter'), 10);
+    targetDino.style.filter = filterIdx === 0 ? '' : FILTERS[filterIdx % FILTERS.length];
+    targetDino.style.opacity = '1';
+  } else {
+    targetDino.style.opacity = '0.4';
+  }
+}
+
+async function submitSwap(accepted) {
+  if (!pendingState) return;
+  const teamId = pendingState.lastRoll.teamId;
+  const targetSelect = document.getElementById('swapTargetSelect');
+  const targetTeamId = targetSelect.value;
+  
+  try {
+    const r = await af('/api/dino-party/swap-result', {
+      method: 'POST',
+      body: JSON.stringify({ teamId, targetTeamId, accepted })
+    });
+    const d = await r.json();
+    if (d.success) {
+      closeSwapPopup();
+      lhash = '';
+      await fetchState();
+    } else {
+      alert('Error saving result.');
+    }
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+function closeSwapPopup() {
+  document.getElementById('swapOv').style.display = 'none';
+  isAnimating = false;
+}
+
+async function fetchState(){
+  if(isAnimating) return;
+  try{
+    const r=await fetch(API+'/api/dino-party/state',{cache:'no-store'});
+    if(!r.ok)return;const g=await r.json();
+    renderQuestionsEditor(g);
+    const h=JSON.stringify(g);if(h===lhash)return;
+    
+    // Check if we should animate
+    const hasNewRoll = gs && g.lastRoll && g.lastRoll.playerName && 
+                       (!gs.lastRoll || gs.lastRoll.timestamp !== g.lastRoll.timestamp);
+                       
+    if (hasNewRoll) {
+      animateTurn(g);
+    } else {
+      lhash=h;gs=g;
+      renderBoard(g);renderPlayers(g);renderRoll(g);checkWin(g);
+    }
+  }catch(e){console.error(e);}
+}
+
+function getpwd(){let p=sessionStorage.getItem('ap');if(!p){p=prompt('Enter Admin Password:');if(p)sessionStorage.setItem('ap',p);}return p||'';}
+async function af(path,opts={}){
+  const r=await fetch(API+path,{cache:'no-store',...opts,headers:{'Content-Type':'application/json','x-admin-password':getpwd(),...opts.headers}});
+  if(r.status===401){sessionStorage.removeItem('ap');alert('Wrong password');window.location.reload();throw new Error('401');}
+  return r;
+}
+
+async function setupGame(){
+  if(!confirm('Set up a new Dino Party game? This resets all positions and randomises tile effects.'))return;
+  const r=await af('/api/dino-party/setup',{method:'POST'});
+  const d=await r.json();
+  if(d.success){winShown=false;lhash='';alert(`Game ready! ${d.playerCount} players. Share the QR codes!`);fetchState();}
+  else alert('Error: '+(d.error||'unknown'));
+}
+async function resetGame(){
+  if(!confirm('Reset all positions to Start? Tiles stay the same.'))return;
+  const r=await af('/api/dino-party/reset',{method:'POST'});
+  const d=await r.json();
+  if(d.success){winShown=false;lhash='';fetchState();}
+  else alert('Error: '+(d.error||'unknown'));
+}
+
+function showQr(){
+  if(!gs?.players?.length){alert('No game set up. Click SETUP GAME first!');return;}
+  const base=window.location.origin+window.location.pathname.replace(/dino-party.*$/,'');
+  document.getElementById('qrGridEl').innerHTML=gs.players.map((p,i)=>{
+    const url=`${base}dino-party/play?id=${p.teamId}`;
+    const qr=`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
+    const fs=i===0?'':` filter:${FILTERS[i%FILTERS.length]};`;
+    return`<div class="qr-card">
+      <img class="qi" src="${qr}" alt="QR ${esc(p.name)}">
+      <img src="./extracted_assets/media/image2.svg" style="${fs};width:22px;height:24px;object-fit:contain;display:block;margin:4px auto;" alt="">
+      <div class="qr-pname">${esc(p.name)}</div>
+      <div class="qr-url">${esc(url)}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('qrModal').style.display='flex';
+}
+function closeQr(){document.getElementById('qrModal').style.display='none';}
+
+async function addPlayer(btn){
+  if (btn) btn.disabled = true;
+  try {
+    const count = gs?.players?.length || 0;
+    const name = `Team ${count + 1}`;
+    const r1 = await af('/api/teams', {
+      method: 'POST',
+      body: JSON.stringify({ name })
+    });
+    if (!r1.ok) {
+      const err = await r1.json();
+      alert('Failed to add player: ' + (err.error || r1.statusText));
+      return;
+    }
+    const r2 = await af('/api/dino-party/setup', { method: 'POST' });
+    if (!r2.ok) {
+      const err = await r2.json();
+      alert('Failed to reset board: ' + (err.error || r2.statusText));
+      return;
+    }
+    lhash = '';
+    await fetchState();
+  } catch (e) {
+    console.error(e);
+    alert('Network error: ' + e.message);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function removePlayer(btn){
+  if (!gs?.players?.length) return;
+  if (btn) btn.disabled = true;
+  try {
+    const lastPlayer = gs.players[gs.players.length - 1];
+    const r1 = await af(`/api/teams/${lastPlayer.teamId}`, { method: 'DELETE' });
+    if (!r1.ok) {
+      const err = await r1.json();
+      alert('Failed to remove player: ' + (err.error || r1.statusText));
+      return;
+    }
+    const r2 = await af('/api/dino-party/setup', { method: 'POST' });
+    if (!r2.ok) {
+      const err = await r2.json();
+      alert('Failed to reset board: ' + (err.error || r2.statusText));
+      return;
+    }
+    lhash = '';
+    await fetchState();
+  } catch (e) {
+    console.error(e);
+    alert('Network error: ' + e.message);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function fireConfetti(){
+  if(typeof confetti!=='function')return;
+  const cv=document.getElementById('confettiCanvas');
+  const mc=confetti.create(cv,{resize:true,useWorker:true});
+  const end=Date.now()+3500;
+  const cols=['#535454','#F7F7F7','#999','#222','#aaa'];
+  (function frame(){mc({particleCount:5,angle:60,spread:55,origin:{x:0},colors:cols});mc({particleCount:5,angle:120,spread:55,origin:{x:1},colors:cols});if(Date.now()<end)requestAnimationFrame(frame);}());
+}
+
+function playV(){
+  try{const c=new(window.AudioContext||window.webkitAudioContext)();[[523.25,0,.12],[523.25,.12,.12],[523.25,.24,.12],[523.25,.36,.4],[392,.76,.4],[466.16,1.16,.4],[523.25,1.56,.15],[466.16,1.71,.15],[523.25,1.86,.8],[659.25,2.7,.2],[698.46,2.9,.2],[783.99,3.1,.4],[523.25,3.5,.4],[659.25,3.9,.2],[698.46,4.1,.2],[783.99,4.3,.4],[1046.5,4.7,1.2]].forEach(([f,s,d])=>{const o=c.createOscillator(),g=c.createGain();o.type='square';o.frequency.value=f;g.gain.setValueAtTime(0,c.currentTime+s);g.gain.linearRampToValueAtTime(.1,c.currentTime+s+.02);g.gain.setValueAtTime(.1,c.currentTime+s+d-.04);g.gain.linearRampToValueAtTime(0,c.currentTime+s+d);o.connect(g);g.connect(c.destination);o.start(c.currentTime+s);o.stop(c.currentTime+s+d+.01);});}catch(e){}
+}
+
+setInterval(fetchState,1500);fetchState();
+</script>
+</body>
+</html>
