@@ -12,6 +12,8 @@ const PORT = process.env.PORT || 3000;
 app.use(cors()); // Enable CORS for GitHub Pages frontend
 app.use(express.json());
 app.use(express.static('public'));
+app.use('/dino-party', express.static('public'));
+app.use('/team', express.static('public'));
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI, {
