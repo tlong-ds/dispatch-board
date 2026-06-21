@@ -974,7 +974,7 @@ function showQr(){
   if(!gs?.players?.length){alert('No game set up. Click SETUP GAME first!');return;}
   const base=window.location.origin+window.location.pathname.replace(/dino-party.*$/,'');
   document.getElementById('qrGridEl').innerHTML=gs.players.map((p,i)=>{
-    const url=`${base}dino-party/play?id=${p.teamId}`;
+    const url=`${base}dino-party-player.html?id=${p.teamId}`;
     const qr=`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
     const fs=i===0?'':` filter:${FILTERS[i%FILTERS.length]};`;
     return`<div class="qr-card">
