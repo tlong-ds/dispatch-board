@@ -300,6 +300,16 @@
 <div class="bg-cactus-large" style="left: calc(50% + 460px);"></div>
 <div class="bg-road"></div>
 
+<div id="authOverlay" style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:var(--bg); z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+    <div style="background:var(--white); border:4px solid var(--text); padding:2rem; text-align:center; box-shadow:8px 8px 0 var(--text);">
+        <h2 id="authTitle" style="margin-top:0; margin-bottom:1rem; font-size:1.2rem; text-transform:uppercase;">Admin Login</h2>
+        <input type="password" id="adminPwdInput" placeholder="Password" style="padding:0.8rem; font-family:'PressStart2P',system-ui,sans-serif; font-size:0.8rem; border:2px solid var(--text); margin-bottom:1rem; width:200px; text-align:center;" onkeypress="if(event.key==='Enter') loginAdmin()">
+        <br>
+        <button class="btn" id="authBtn" onclick="loginAdmin()">LOGIN</button>
+    </div>
+</div>
+
+<div id="appContainer" style="display: none; flex-direction: column; height: 100vh; width: 100%;">
 <header>
   <h1>Dispatch Scoreboard</h1>
   <div style="display: flex; gap: 1rem;">
@@ -338,6 +348,8 @@
   </div>
   <button class="btn btn-primary" onclick="closeModal()" style="position: relative; z-index: 10001;">CONTINUE</button>
 </div>
+
+</div> <!-- End of appContainer -->
 
 <script>
   let teamsData = {};
@@ -534,24 +546,95 @@
 
   const API_BASE_URL = '__API_BASE_URL__'.startsWith('__') ? 'http://localhost:3000' : '__API_BASE_URL__'; // Replaced by GitHub Actions
 
+  let savedPassword = localStorage.getItem("adminPassword") || "";
+
+  async function hashPassword(pwd) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(pwd);
+      const hash = await crypto.subtle.digest('SHA-256', data);
+      return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function loginAdmin() {
+      const input = document.getElementById("adminPwdInput").value;
+      if (!input) return;
+      savedPassword = await hashPassword(input);
+      await initApp();
+  }
+
+  async function setAdminPassword() {
+      const input = document.getElementById("adminPwdInput").value;
+      if (!input) {
+          alert("Password cannot be empty");
+          return;
+      }
+      const hashed = await hashPassword(input);
+      try {
+          await fetch(API_BASE_URL + "/api/admin-password", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ password: hashed })
+          });
+          savedPassword = hashed;
+          await initApp();
+      } catch(e) {
+          console.error(e);
+      }
+  }
+
   async function apiFetch(url, options = {}) {
-    const password = localStorage.getItem('adminPassword') || '';
     const headers = { 'Content-Type': 'application/json' };
-    if (password) headers['x-admin-password'] = password;
-    return fetch(API_BASE_URL + url, { cache: 'no-store', ...options, headers });
+    if (savedPassword) headers['x-admin-password'] = savedPassword;
+    const res = await fetch(API_BASE_URL + url, { cache: 'no-store', ...options, headers });
+    if (res.status === 401) {
+        localStorage.removeItem("adminPassword");
+        document.getElementById('authOverlay').style.display = 'flex';
+        document.getElementById('appContainer').style.display = 'none';
+        throw new Error("Unauthorized");
+    }
+    return res;
+  }
+
+  let appInitialized = false;
+  async function initApp() {
+      try {
+          const hasPwdRes = await fetch(API_BASE_URL + '/api/has-admin-password');
+          const { hasPassword } = await hasPwdRes.json();
+          
+          if (!hasPassword) {
+              document.getElementById('authTitle').textContent = "Set Admin Password";
+              document.getElementById('authBtn').textContent = "SET PASSWORD";
+              document.getElementById('authBtn').onclick = setAdminPassword;
+              document.getElementById('adminPwdInput').onkeypress = (e) => { if(e.key === 'Enter') setAdminPassword(); };
+              document.getElementById('authOverlay').style.display = 'flex';
+              document.getElementById('appContainer').style.display = 'none';
+              return;
+          }
+
+          document.getElementById('authTitle').textContent = "Admin Login";
+          document.getElementById('authBtn').textContent = "LOGIN";
+          document.getElementById('authBtn').onclick = loginAdmin;
+          document.getElementById('adminPwdInput').onkeypress = (e) => { if(e.key === 'Enter') loginAdmin(); };
+
+          await apiFetch('/api/state'); // test auth
+          localStorage.setItem("adminPassword", savedPassword);
+          document.getElementById('authOverlay').style.display = 'none';
+          document.getElementById('appContainer').style.display = 'flex';
+          
+          if (!appInitialized) {
+              appInitialized = true;
+              updateTimerDisplay();
+              fetchState();
+              setInterval(fetchState, 3000);
+          }
+      } catch(e) {
+          console.error("Login failed or unauthorized");
+      }
   }
 
   async function fetchState() {
     try {
       const res = await apiFetch('/api/state');
-      if (res.status === 401) {
-        const pwd = prompt('Admin Password required:');
-        if (pwd !== null) {
-          localStorage.setItem('adminPassword', pwd);
-          return fetchState();
-        }
-        return;
-      }
       const data = await res.json();
       teamsData = data.teams;
       if (data.timer) {
@@ -633,12 +716,8 @@
     });
   }
 
-  // Poll state every 3 seconds to catch resets or score changes from other clients
-  setInterval(fetchState, 3000);
-
   // Initial load
-  updateTimerDisplay();
-  fetchState();
+  initApp();
 </script>
 
 <script src="sounds.js"></script>

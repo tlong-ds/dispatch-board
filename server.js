@@ -204,7 +204,7 @@ const requireAdmin = async (req, res, next) => {
     let adminPassword = state ? state.adminPassword : '';
     // Fallback to env var if database is empty, to prevent lockout if someone manually set env var
     if (!adminPassword && process.env.ADMIN_PASSWORD) {
-        adminPassword = process.env.ADMIN_PASSWORD;
+        adminPassword = crypto.createHash('sha256').update(process.env.ADMIN_PASSWORD).digest('hex');
     }
     
     if (!adminPassword) {
@@ -220,6 +220,20 @@ const requireAdmin = async (req, res, next) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// Check if admin password is set
+app.get('/api/has-admin-password', async (req, res) => {
+  try {
+    let state = await GameState.findOne({ singleton: 'STATE' });
+    let adminPassword = state ? state.adminPassword : '';
+    if (!adminPassword && process.env.ADMIN_PASSWORD) {
+        adminPassword = crypto.createHash('sha256').update(process.env.ADMIN_PASSWORD).digest('hex');
+    }
+    res.json({ hasPassword: !!adminPassword });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // GET all state
 app.get('/api/state', requireAdmin, async (req, res) => {
@@ -508,7 +522,20 @@ app.get('/api/spotlight/state', async (req, res) => {
       });
       await state.save();
     }
-    res.json(state);
+    
+    // Attach spotlightedTeamName
+    let spotlightedTeamName = null;
+    if (state.spotlightedTeamId) {
+      const globalState = await GameState.findOne({ singleton: 'STATE' });
+      if (globalState && globalState.teams && globalState.teams[state.spotlightedTeamId]) {
+        spotlightedTeamName = globalState.teams[state.spotlightedTeamId].name;
+      }
+    }
+    
+    const responseData = state.toObject();
+    responseData.spotlightedTeamName = spotlightedTeamName;
+    
+    res.json(responseData);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

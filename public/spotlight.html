@@ -57,22 +57,28 @@
       min-height: 150px;
     }
 
-    .timer-display {
-      font-size: 5rem;
-      margin-top: 3rem;
-      font-weight: bold;
-      color: var(--text);
-      text-shadow: 4px 4px 0px rgba(0,0,0,0.5);
-    }
-    
-    .timer-display.warning {
-      color: #ef4444;
-      animation: blink 1s infinite;
+    .feedback-container {
+      margin-top: 2rem;
+      max-height: 40vh;
+      overflow-y: auto;
+      width: 100%;
+      text-align: left;
     }
 
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0; }
+    .feedback-item {
+      background: rgba(255, 255, 255, 0.1);
+      border-left: 4px solid var(--primary);
+      padding: 1rem;
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+      line-height: 1.5;
+    }
+    
+    .feedback-item .from-team {
+      font-weight: bold;
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+      font-size: 1.4rem;
     }
     
     .status-text {
@@ -125,7 +131,7 @@
 <div class="container">
   <div class="status-text" id="statusText">WAITING FOR PROMPT</div>
   <div class="prompt-text" id="promptText">...</div>
-  <div class="timer-display" id="timerDisplay" style="display: none;">45</div>
+  <div class="feedback-container" id="feedbackContainer" style="display: none;"></div>
 </div>
 
 <script>
@@ -146,51 +152,43 @@
   function updateUI(state) {
     const promptText = document.getElementById('promptText');
     const statusText = document.getElementById('statusText');
-    const timerDisplay = document.getElementById('timerDisplay');
+    const feedbackContainer = document.getElementById('feedbackContainer');
 
-    if (state.currentPrompt) {
-      promptText.textContent = state.currentPrompt;
-      statusText.textContent = "TODAY'S TOPIC";
-      statusText.style.color = "var(--text)";
+    if (state.spotlightedTeamId && state.spotlightedTeamName) {
+      statusText.textContent = `SPOTLIGHT: ${state.spotlightedTeamName}`;
+      statusText.style.color = "var(--primary)";
+      
+      // Render Feedback
+      feedbackContainer.style.display = "block";
+      const feedbacks = state.feedbacks || [];
+      if (feedbacks.length > 0) {
+        feedbackContainer.innerHTML = feedbacks.map(f => `
+          <div class="feedback-item">
+            <div class="from-team">${f.fromTeamName} said:</div>
+            <div><span style="color:#aaa;">Hesitated >3s:</span> ${f.fluency ? 'Yes' : 'No'}</div>
+            <div><span style="color:#aaa;">Structure:</span> ${f.structure || 'None'}</div>
+            <div><span style="color:#aaa;">All 3 starters:</span> ${f.completion ? 'Yes' : 'No'}</div>
+            <div><span style="color:#aaa;">Vocab:</span> ${f.vocabulary || '-'}</div>
+          </div>
+        `).join("");
+      } else {
+        feedbackContainer.innerHTML = '<div style="color: #aaaaaa; font-size: 1.5rem; margin-top: 2rem;">Waiting for live feedback...</div>';
+      }
     } else {
-      promptText.textContent = "...";
-      statusText.textContent = "WAITING FOR PROMPT";
-      statusText.style.color = "#aaaaaa";
+      feedbackContainer.style.display = "none";
+      if (state.currentPrompt) {
+        statusText.textContent = "TODAY'S TOPIC";
+        statusText.style.color = "var(--text)";
+      } else {
+        statusText.textContent = "WAITING FOR PROMPT";
+        statusText.style.color = "#aaaaaa";
+      }
     }
-
-    if (state.timerIsRunning) {
-      timerDisplay.style.display = "block";
-      const end = new Date(state.timerEndTime).getTime();
-      const now = Date.now();
-      const rem = Math.max(0, Math.ceil((end - now) / 1000));
-      timerDisplay.textContent = rem;
-      
-      if (rem <= 10 && rem > 0) {
-        timerDisplay.classList.add('warning');
-      } else {
-        timerDisplay.classList.remove('warning');
-      }
-      
-      if (rem === 0) {
-         timerDisplay.textContent = "TIME'S UP";
-         timerDisplay.style.fontSize = "3rem";
-         timerDisplay.classList.add('warning');
-      } else {
-         timerDisplay.style.fontSize = "5rem";
-      }
+    
+    if (state.currentPrompt) {
+        promptText.textContent = state.currentPrompt;
     } else {
-      if (state.timerRemaining === 0) {
-          timerDisplay.style.display = "block";
-          timerDisplay.textContent = "TIME'S UP";
-          timerDisplay.style.fontSize = "3rem";
-          timerDisplay.classList.add('warning');
-      } else if (state.timerRemaining < 45 && state.timerRemaining > 0) {
-          timerDisplay.style.display = "block";
-          timerDisplay.textContent = state.timerRemaining;
-          timerDisplay.classList.remove('warning');
-      } else {
-          timerDisplay.style.display = "none";
-      }
+        promptText.textContent = "...";
     }
   }
 

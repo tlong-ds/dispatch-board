@@ -176,10 +176,50 @@
     <body>
         <div id="authOverlay" style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:var(--bg); z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center;">
             <div style="background:#1a1a1a; border:4px solid var(--text); padding:2rem; text-align:center; box-shadow:8px 8px 0 var(--text);">
-                <h2 style="margin-top:0; margin-bottom:1rem; font-size:1.2rem; text-transform:uppercase;">Admin Login</h2>
+                <h2 id="authTitle" style="margin-top:0; margin-bottom:1rem; font-size:1.2rem; text-transform:uppercase;">Admin Login</h2>
                 <input type="password" id="adminPwdInput" placeholder="Password" style="padding:0.8rem; font-family:'PressStart2P',system-ui,sans-serif; font-size:0.8rem; border:2px solid var(--text); margin-bottom:1rem; width:200px; text-align:center; background:#333; color:var(--text);" onkeypress="if(event.key==='Enter') loginAdmin()">
                 <br>
-                <button class="btn btn-primary" onclick="loginAdmin()">LOGIN</button>
+                <button class="btn btn-primary" id="authBtn" onclick="loginAdmin()">LOGIN</button>
+            </div>
+        </div>
+
+        <div id="helpModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.8); z-index:9999; flex-direction:column; align-items:center; justify-content:center;">
+            <div style="background:#1a1a1a; border:4px solid var(--text); padding:2rem; width:95%; max-width:1000px; max-height:80vh; overflow-y:auto; box-shadow:8px 8px 0 var(--text);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                    <h2 style="margin:0;">Deck Explanations</h2>
+                    <button class="btn btn-sm btn-danger" onclick="document.getElementById('helpModal').style.display='none'">CLOSE</button>
+                </div>
+                <div style="margin-bottom:1.5rem;">
+                    <h3 style="color:var(--primary); margin-top:0;">REASON</h3>
+                    <pre style="white-space:pre-wrap; font-family:'PressStart2P', system-ui, sans-serif; font-size:0.7rem; line-height:1.5; color:#aaa;">1. THE REASON: "I think the primary reason for this is..."
+2. THE DAILY EFFECT: "Because of this, ..."
+3. THE BIG PICTURE: "As a result, society as a whole will ultimately..."</pre>
+                </div>
+                <div style="margin-bottom:1.5rem;">
+                    <h3 style="color:var(--primary); margin-top:0;">VIEW</h3>
+                    <pre style="white-space:pre-wrap; font-family:'PressStart2P', system-ui, sans-serif; font-size:0.7rem; line-height:1.5; color:#aaa;">1. YOUR VIEW: "I strongly believe that..."
+2. THE OTHER SIDE: "Admittedly, it is true that some people might argue..."
+3. YOUR COMEBACK: "However, at the end of the day..."</pre>
+                </div>
+                <div style="margin-bottom:1.5rem;">
+                    <h3 style="color:var(--primary); margin-top:0;">FUTURE</h3>
+                    <pre style="white-space:pre-wrap; font-family:'PressStart2P', system-ui, sans-serif; font-size:0.7rem; line-height:1.5; color:#aaa;">1. THE FUTURE: "In the coming years, it is highly likely that..."
+2. THE 'WHAT IF': "If this trend continues, then we will probably see..."
+3. THE WARNING: "The only major risk with this is..."</pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- QR Codes Modal -->
+        <div id="qrModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.8); z-index:9999; flex-direction:column; align-items:center; justify-content:center;">
+            <div style="background:#1a1a1a; border:4px solid var(--text); padding:2rem; width:90%; max-width:1000px; max-height:80vh; overflow-y:auto; box-shadow:8px 8px 0 var(--text);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                    <h2 style="margin:0;">Team QR Codes</h2>
+                    <button class="btn btn-sm btn-danger" onclick="document.getElementById('qrModal').style.display='none'">CLOSE</button>
+                </div>
+                <div id="qrGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;">
+                    <!-- QR codes injected here -->
+                </div>
             </div>
         </div>
 
@@ -213,30 +253,27 @@
                     </div>
                 </div>
 
-                <div class="panel">
-                    <h2>Projector Timer</h2>
-                    <div class="controls-row">
-                        <button class="btn btn-primary" style="flex: 1;" onclick="controlTimer('start')">START 45s</button>
-                        <button class="btn" onclick="controlTimer('pause')">PAUSE</button>
-                        <button class="btn btn-danger" onclick="controlTimer('reset', 45)">RESET</button>
-                    </div>
-                    <div id="timerStatus" style="font-size: 0.8rem; margin-top: 1rem; text-align: center;">Waiting...</div>
-                </div>
-                
-                <div class="panel" style="flex: 1; overflow-y: auto;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <h2>Live Feedback</h2>
-                        <button class="btn btn-danger btn-sm" onclick="clearFeedback()">CLEAR ALL</button>
-                    </div>
-                    <div id="feedbackList">
-                        <!-- Feedbacks injected here -->
-                    </div>
-                </div>
             </div>
 
             <div class="right-panel">
+                <div class="panel">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h2 style="margin: 0;">Team Controller</h2>
+                        <span id="teamCountDisplay" style="color: var(--primary); font-size: 0.8rem;"></span>
+                    </div>
+                    <div class="controls-row">
+                        <button class="btn btn-primary" style="flex: 1;" onclick="addTeam()">+ ADD TEAM</button>
+                        <button class="btn btn-danger" style="flex: 1;" onclick="removeLastTeam()">- REMOVE TEAM</button>
+                        <button class="btn btn-primary" style="flex: 1;" onclick="document.getElementById('qrModal').style.display='flex'">QR CODES</button>
+                    </div>
+                </div>
+                
                 <div class="panel" style="flex: 1;">
-                    <h2>Teams & Dispatch</h2>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h2 style="margin: 0;">Spotlight & Dispatch</h2>
+                        <button class="btn btn-sm" onclick="document.getElementById('helpModal').style.display='flex'">? HELP</button>
+                    </div>
+                    <button class="btn btn-primary" style="width: 100%; margin-bottom: 1.5rem; padding: 1.5rem; font-size: 1rem;" onclick="randomSpotlight()">RANDOM SPOTLIGHT</button>
                     <div id="teamGrid">
                         <!-- Teams injected here -->
                     </div>
@@ -258,10 +295,38 @@
 
             let savedPassword = localStorage.getItem("adminPassword") || "";
 
+            async function hashPassword(pwd) {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(pwd);
+                const hash = await crypto.subtle.digest('SHA-256', data);
+                return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+            }
+
             async function loginAdmin() {
                 const input = document.getElementById("adminPwdInput").value;
-                savedPassword = input;
+                if (!input) return;
+                savedPassword = await hashPassword(input);
                 await initApp();
+            }
+
+            async function setAdminPassword() {
+                const input = document.getElementById("adminPwdInput").value;
+                if (!input) {
+                    alert("Password cannot be empty");
+                    return;
+                }
+                const hashed = await hashPassword(input);
+                try {
+                    await fetch(API_BASE_URL + "/api/admin-password", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ password: hashed })
+                    });
+                    savedPassword = hashed;
+                    await initApp();
+                } catch(e) {
+                    console.error(e);
+                }
             }
 
             async function apiFetch(path, options = {}) {
@@ -279,6 +344,24 @@
             let appInitialized = false;
             async function initApp() {
                 try {
+                    const hasPwdRes = await fetch(API_BASE_URL + '/api/has-admin-password');
+                    const { hasPassword } = await hasPwdRes.json();
+                    
+                    if (!hasPassword) {
+                        document.getElementById('authTitle').textContent = "Set Admin Password";
+                        document.getElementById('authBtn').textContent = "SET PASSWORD";
+                        document.getElementById('authBtn').onclick = setAdminPassword;
+                        document.getElementById('adminPwdInput').onkeypress = (e) => { if(e.key === 'Enter') setAdminPassword(); };
+                        document.getElementById('authOverlay').style.display = 'flex';
+                        document.getElementById('appContainer').style.display = 'none';
+                        return;
+                    }
+
+                    document.getElementById('authTitle').textContent = "Admin Login";
+                    document.getElementById('authBtn').textContent = "LOGIN";
+                    document.getElementById('authBtn').onclick = loginAdmin;
+                    document.getElementById('adminPwdInput').onkeypress = (e) => { if(e.key === 'Enter') loginAdmin(); };
+
                     await apiFetch("/api/state"); // test auth
                     localStorage.setItem("adminPassword", savedPassword);
                     document.getElementById('authOverlay').style.display = 'none';
@@ -328,15 +411,27 @@
                 const select = document.getElementById("promptSelect");
                 const currentPrompt = select.value;
                 if (!currentPrompt) return;
-                await apiFetch("/api/spotlight/current-prompt", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ currentPrompt })
-                });
+                
+                if (currentPrompt === '__RANDOM__') {
+                    if (!spotlightState || !spotlightState.prompts || spotlightState.prompts.length === 0) return;
+                    const randomPrompt = spotlightState.prompts[Math.floor(Math.random() * spotlightState.prompts.length)];
+                    await apiFetch("/api/spotlight/current-prompt", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ currentPrompt: randomPrompt })
+                    });
+                } else {
+                    await apiFetch("/api/spotlight/current-prompt", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ currentPrompt })
+                    });
+                }
                 fetchData();
             }
 
             async function clearPrompt() {
+                pendingPromptSelection = null;
                 await apiFetch("/api/spotlight/current-prompt", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -366,34 +461,81 @@
                 fetchData();
             }
 
-            async function controlTimer(action, value) {
-                await apiFetch("/api/spotlight/timer", {
+            async function randomSpotlight() {
+                const teamIds = Object.keys(teamsData);
+                if (teamIds.length === 0) return;
+                const randomId = teamIds[Math.floor(Math.random() * teamIds.length)];
+                await apiFetch("/api/spotlight/team", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ action, value })
+                    body: JSON.stringify({ spotlightedTeamId: randomId })
                 });
                 fetchData();
             }
-            
-            async function clearFeedback() {
-                if(!confirm("Clear all feedback?")) return;
-                await apiFetch("/api/spotlight/clear-feedback", { method: "POST" });
+
+            async function addTeam() {
+                const numTeams = Object.keys(teamsData).length;
+                if (numTeams >= 10) {
+                    alert("Maximum of 10 teams reached.");
+                    return;
+                }
+                const nextId = numTeams + 1;
+                const name = `Team ${nextId}`;
+                await apiFetch("/api/teams", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name }),
+                });
                 fetchData();
             }
 
-            function updateTimerDisplay() {
-                if (!spotlightState) return;
-                const statusEl = document.getElementById('timerStatus');
-                if (spotlightState.timerIsRunning) {
-                    const end = new Date(spotlightState.timerEndTime).getTime();
-                    const now = Date.now();
-                    const rem = Math.max(0, Math.floor((end - now)/1000));
-                    statusEl.textContent = `Running: ${rem}s left`;
-                    statusEl.style.color = "var(--success)";
-                } else {
-                    statusEl.textContent = `Paused / Ready: ${spotlightState.timerRemaining}s`;
-                    statusEl.style.color = "var(--text)";
+            async function removeLastTeam() {
+                const teamKeys = Object.keys(teamsData).sort();
+                if (teamKeys.length === 0) return;
+
+                const lastKey = teamKeys[teamKeys.length - 1];
+                const teamToRemove = teamsData[lastKey];
+
+                if (teamToRemove) {
+                    await apiFetch(`/api/teams/${teamToRemove._id}`, {
+                        method: "DELETE",
+                    });
+                    fetchData();
                 }
+            }
+
+            function updateTimerDisplay() {
+                // Timer logic removed
+            }
+
+            function getQrUrl(hashId) {
+                const basePath = window.location.pathname.replace(/spotlight-host\.html$/, "").replace(/\/$/, "");
+                const url = window.location.origin + basePath + "/team.html?id=" + hashId;
+                return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`;
+            }
+
+            function expandQr(hashId) {
+                const url = getQrUrl(hashId);
+                const modal = document.createElement("div");
+                modal.style.position = "fixed";
+                modal.style.top = "0";
+                modal.style.left = "0";
+                modal.style.width = "100vw";
+                modal.style.height = "100vh";
+                modal.style.backgroundColor = "rgba(0,0,0,0.8)";
+                modal.style.display = "flex";
+                modal.style.justifyContent = "center";
+                modal.style.alignItems = "center";
+                modal.style.zIndex = "10000";
+                modal.onclick = () => document.body.removeChild(modal);
+                const img = document.createElement("img");
+                img.src = url;
+                img.style.width = "500px";
+                img.style.height = "500px";
+                img.style.border = "10px solid white";
+                img.style.borderRadius = "8px";
+                modal.appendChild(img);
+                document.body.appendChild(modal);
             }
 
             function render() {
@@ -405,47 +547,57 @@
 
                 // Update prompt select options
                 if (!isSelectFocused) {
-                    const currentSelection = promptSelect.value;
                     promptSelect.innerHTML = `<option value="" disabled ${!spotlightState.currentPrompt ? 'selected' : ''}>Select a prompt to display...</option>` + 
+                        `<option value="__RANDOM__">=> RANDOM PROMPT <=</option>` +
                         (spotlightState.prompts || []).map(p => `<option value="${p.replace(/"/g, '&quot;')}" ${spotlightState.currentPrompt === p ? 'selected' : ''}>${p}</option>`).join("");
-                    if (!spotlightState.currentPrompt && currentSelection) promptSelect.value = currentSelection;
+                    
+                    if (pendingPromptSelection) {
+                        promptSelect.value = pendingPromptSelection;
+                    } else if (spotlightState.currentPrompt) {
+                        promptSelect.value = spotlightState.currentPrompt;
+                    } else {
+                        promptSelect.value = "";
+                    }
                 }
 
-                // Render teams
+                // Update team count display
+                const numTeams = Object.keys(teamsData).length;
+                document.getElementById('teamCountDisplay').textContent = `${numTeams} / 10 TEAMS`;
+
+                // Render spotlighted team
                 const teamGrid = document.getElementById("teamGrid");
-                teamGrid.innerHTML = Object.entries(teamsData).map(([id, team]) => {
-                    const isSpotlighted = spotlightState.spotlightedTeamId === String(team._id);
+                if (spotlightState.spotlightedTeamId && teamsData[spotlightState.spotlightedTeamId]) {
+                    const team = teamsData[spotlightState.spotlightedTeamId];
+                    teamGrid.innerHTML = `
+                        <div class="team-card" style="border-color: var(--primary);">
+                            <div class="team-header" style="margin-bottom: 0;">
+                                <span class="team-name" style="color: var(--primary);">★ ${team.name}</span>
+                                <span class="status-badge active">SPOTLIGHTED</span>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    teamGrid.innerHTML = `<div style="text-align: center; color: #888; margin-top: 2rem; font-size: 0.8rem;">No team is currently spotlighted.<br><br>Click RANDOM SPOTLIGHT to begin.</div>`;
+                }
+
+                // Render QR codes
+                const qrGrid = document.getElementById("qrGrid");
+                qrGrid.innerHTML = Object.entries(teamsData).map(([id, team]) => {
                     return `
-                        <div class="team-card" style="${isSpotlighted ? 'border-color: var(--primary);' : ''}">
-                            <div class="team-header">
-                                <span class="team-name">${team.name}</span>
-                                <span class="status-badge ${isSpotlighted ? 'active' : ''}">${isSpotlighted ? 'SPOTLIGHTED' : (team.item ? 'Has Item' : 'Waiting')}</span>
+                        <div style="display: flex; align-items: center; gap: 15px; background: rgba(255,255,255,0.05); padding: 1rem; border: 2px solid var(--text);">
+                            <img src="${getQrUrl(team._id)}" alt="QR Code" width="80" height="80"
+                                style="background: white; padding: 4px; cursor: zoom-in; transition: transform 0.2s;"
+                                onmouseover="this.style.transform='scale(1.05)'"
+                                onmouseout="this.style.transform='scale(1)'"
+                                onclick="expandQr('${team._id}')" title="Click to expand QR Code">
+                            <div style="font-size: 0.6rem; color: #ccc; line-height: 1.8;">
+                                <div style="font-size: 0.8rem; color: var(--primary); margin-bottom: 0.5rem;">${team.name}</div>
+                                Scan to join or <br>
+                                <a href="team.html?id=${team._id}" target="_blank" style="color: var(--primary); text-decoration: none; font-weight: 600;">OPEN LINK</a>
                             </div>
-                            <div class="controls-row">
-                                <button class="btn btn-sm" onclick="dispatchDeck('${id}', 'A')">Send Deck A</button>
-                                <button class="btn btn-sm" onclick="dispatchDeck('${id}', 'B')">Send Deck B</button>
-                                <button class="btn btn-sm" onclick="dispatchDeck('${id}', 'C')">Send Deck C</button>
-                            </div>
-                            <button class="btn ${isSpotlighted ? 'btn-danger' : 'btn-primary'} btn-sm" style="width: 100%;" onclick="toggleSpotlight('${id}')">
-                                ${isSpotlighted ? 'REMOVE SPOTLIGHT' : 'SPOTLIGHT TEAM'}
-                            </button>
                         </div>
                     `;
                 }).join("");
-                
-                // Render feedback
-                const feedbackList = document.getElementById("feedbackList");
-                feedbackList.innerHTML = (spotlightState.feedbacks || []).reverse().map(f => {
-                    return `
-                        <div class="feedback-item">
-                            <div style="font-weight: bold; margin-bottom: 0.5rem; color: var(--primary);">From: ${f.fromTeamName}</div>
-                            <div><span>Hesitated >3s:</span> ${f.fluency ? 'Yes' : 'No'}</div>
-                            <div><span>Guessed Structure:</span> ${f.structure || 'None'}</div>
-                            <div><span>Used all 3 starters:</span> ${f.completion ? 'Yes' : 'No'}</div>
-                            <div><span>Vocab:</span> ${f.vocabulary || '-'}</div>
-                        </div>
-                    `;
-                }).join("") || '<div style="color: #aaa; font-size: 0.8rem;">No feedback yet.</div>';
 
                 updateTimerDisplay();
             }
@@ -458,9 +610,13 @@
             });
 
             let isSelectFocused = false;
+            let pendingPromptSelection = null;
             const promptSelect = document.getElementById("promptSelect");
             promptSelect.addEventListener("focus", () => isSelectFocused = true);
             promptSelect.addEventListener("blur", () => isSelectFocused = false);
+            promptSelect.addEventListener("change", (e) => {
+                pendingPromptSelection = e.target.value;
+            });
 
             initApp();
         </script>

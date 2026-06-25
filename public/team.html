@@ -277,7 +277,7 @@
 
 <div class="container" id="mainContainer">
   <div class="status" id="status">Waiting for your item...</div>
-  <div class="item-display" id="itemDisplay"></div>
+  <div id="contentContainer"></div>
 </div>
 
 <div class="feedback-container" id="feedbackContainer">
@@ -397,25 +397,121 @@
         document.body.style.backgroundColor = 'transparent';
     }
 
-    if (currentItem) {
-      itemDisplay.textContent = currentItem;
-      document.body.classList.add('has-item');
-      
-      if (itemChanged) {
-          if (navigator.vibrate) navigator.vibrate(200);
-          // Trigger jump animation and sound
-          if (dino) {
-            dino.classList.remove('jumping');
-            void dino.offsetWidth; // trigger reflow
-            dino.classList.add('jumping');
-            if (window.AudioFX) window.AudioFX.playJump();
-          }
-      }
-    } else {
-      itemDisplay.textContent = '';
-      document.body.classList.remove('has-item');
-      status.textContent = "Waiting for your item...";
+    let itemChanged = false;
+    if (teamData && teamData.item !== currentItem) {
+      currentItem = teamData.item;
+      itemChanged = true;
     }
+
+    const isSpotlighted = spotlightState && spotlightState.spotlightedTeamId === currentTeamId;
+
+    if (isSpotlighted) {
+      renderDecks();
+      document.body.classList.add('has-item');
+      status.textContent = "SPOTLIGHTED! Choose your deck:";
+      status.style.color = "var(--primary)";
+    } else if (currentItem) {
+      renderItem();
+      document.body.classList.add('has-item');
+      status.textContent = "You received an item!";
+      status.style.color = "var(--text)";
+    } else {
+      document.getElementById('contentContainer').innerHTML = '';
+      document.body.classList.remove('has-item');
+      status.textContent = "Waiting for your turn...";
+      status.style.color = "var(--text)";
+    }
+
+    if (itemChanged && !isSpotlighted) {
+        isExpanded = false;
+        if (navigator.vibrate) navigator.vibrate(200);
+        if (dino) {
+          dino.classList.remove('jumping');
+          void dino.offsetWidth;
+          dino.classList.add('jumping');
+          if (window.AudioFX) window.AudioFX.playJump();
+        }
+    }
+  }
+
+  let isExpanded = false;
+  function toggleExpand() {
+      if (!currentItem || !currentItem.includes('\n')) return;
+      isExpanded = !isExpanded;
+      renderItem();
+  }
+
+  let expandedDeckIndex = -1;
+  function toggleDeck(index) {
+      expandedDeckIndex = expandedDeckIndex === index ? -1 : index;
+      renderDecks();
+  }
+
+  function renderDecks() {
+      const container = document.getElementById('contentContainer');
+      const DECKS = [
+          "1. THE REASON: \"I think the primary reason for this is...\"\n2. THE DAILY EFFECT: \"Because of this, ...\"\n3. THE BIG PICTURE: \"As a result, society as a whole will ultimately...\"",
+          "1. YOUR VIEW: \"I strongly believe that...\"\n2. THE OTHER SIDE: \"Admittedly, it is true that some people might argue...\"\n3. YOUR COMEBACK: \"However, at the end of the day...\"",
+          "1. THE FUTURE: \"In the coming years, it is highly likely that...\"\n2. THE 'WHAT IF': \"If this trend continues, then we will probably see...\"\n3. THE WARNING: \"The only major risk with this is...\""
+      ];
+      
+      let html = `<div style="display: flex; flex-direction: column; gap: 1rem; width: 100%; max-width: 400px; margin: 0 auto;">`;
+      
+      DECKS.forEach((deckText, index) => {
+          const lines = deckText.split('\n');
+          const title = lines[0].match(/1\.\s(.*?):/) ? lines[0].match(/1\.\s(.*?):/)[1] : 'DECK';
+          const isExpanded = (expandedDeckIndex === index);
+          
+          html += `
+              <div class="item-display" style="cursor: pointer; padding: 1.5rem; margin: 0; min-width: auto; width: 100%; box-sizing: border-box; display: block;" onclick="toggleDeck(${index})">
+                  ${!isExpanded ? `
+                  <div style="text-align: center;">
+                      <div style="font-size: 0.7rem; color: #888; margin-bottom: 0.5rem; animation: pulse 2s infinite;">TAP TO OPEN</div>
+                      <div style="font-size: 1.2rem; color: var(--primary); text-transform: uppercase;">${title}</div>
+                  </div>
+                  ` : `
+                  <div style="cursor: pointer;">
+                      <div style="font-size: 0.7rem; color: #888; margin-bottom: 1rem; text-align: center; animation: pulse 2s infinite;">TAP TO CLOSE</div>
+                      <div style="white-space: pre-wrap; font-size: 0.9rem; line-height: 2; text-align: left; color: var(--text);">${deckText}</div>
+                  </div>
+                  `}
+              </div>
+          `;
+      });
+      html += `</div>`;
+      container.innerHTML = html;
+  }
+
+  function renderItem() {
+      const container = document.getElementById('contentContainer');
+      if (!currentItem) {
+          container.innerHTML = '';
+          return;
+      }
+      
+      if (currentItem.includes('\n')) {
+          const lines = currentItem.split('\n');
+          const match = lines[0].match(/1\.\s(.*?):/);
+          const title = match ? match[1] : 'DECK';
+          
+          container.innerHTML = `
+            <div class="item-display" style="cursor: pointer; display: inline-block;" onclick="toggleExpand()">
+                ${!isExpanded ? `
+                <div style="text-align: center;">
+                    <div style="font-size: 0.8rem; color: #888; margin-bottom: 0.5rem; animation: pulse 2s infinite;">TAP TO OPEN</div>
+                    <div style="font-size: 1.5rem; color: var(--text); text-transform: uppercase;">${title}</div>
+                </div>
+                ` : `
+                <div>
+                    <div style="font-size: 0.8rem; color: #888; margin-bottom: 1rem; text-align: center; animation: pulse 2s infinite;">TAP TO CLOSE</div>
+                    <div style="white-space: pre-wrap; font-size: 1rem; line-height: 2; text-align: left;">${currentItem}</div>
+                </div>
+                `}
+            </div>
+          `;
+      } else {
+          container.innerHTML = `<div class="item-display" style="display: inline-block; cursor: default;">${currentItem}</div>`;
+      }
   }
 
   async function submitFeedback() {
