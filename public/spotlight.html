@@ -75,30 +75,6 @@
       margin-right: auto;
     }
 
-    .feedback-container {
-      margin-top: 2rem;
-      max-height: 40vh;
-      overflow-y: auto;
-      width: 100%;
-      text-align: left;
-    }
-
-    .feedback-item {
-      background: rgba(255, 255, 255, 0.1);
-      border-left: 4px solid var(--primary);
-      padding: 1rem;
-      margin-bottom: 1rem;
-      font-size: 1.2rem;
-      line-height: 1.5;
-    }
-    
-    .feedback-item .from-team {
-      font-weight: bold;
-      color: var(--primary);
-      margin-bottom: 0.5rem;
-      font-size: 1.4rem;
-    }
-    
     .status-text {
       font-size: 1.5rem;
       color: #aaaaaa;
@@ -150,7 +126,6 @@
   <div class="status-text" id="statusText">WAITING FOR PROMPT</div>
   <div class="prompt-text" id="promptText">...</div>
   <div class="deck-container" id="deckContainer"></div>
-  <div class="feedback-container" id="feedbackContainer" style="display: none;"></div>
 </div>
 
 <script>
@@ -171,30 +146,12 @@
   function updateUI(state) {
     const promptText = document.getElementById('promptText');
     const statusText = document.getElementById('statusText');
-    const feedbackContainer = document.getElementById('feedbackContainer');
     const deckContainer = document.getElementById('deckContainer');
 
     if (state.spotlightedTeamId && state.spotlightedTeamName) {
       statusText.textContent = `SPOTLIGHT: ${state.spotlightedTeamName}`;
       statusText.style.color = "var(--primary)";
       
-      // Render Feedback
-      feedbackContainer.style.display = "block";
-      const feedbacks = state.feedbacks || [];
-      if (feedbacks.length > 0) {
-        feedbackContainer.innerHTML = feedbacks.map(f => `
-          <div class="feedback-item">
-            <div class="from-team">${f.fromTeamName} said:</div>
-            <div><span style="color:#aaa;">Hesitated >3s:</span> ${f.fluency ? 'Yes' : 'No'}</div>
-            <div><span style="color:#aaa;">Structure:</span> ${f.structure || 'None'}</div>
-            <div><span style="color:#aaa;">All 3 starters:</span> ${f.completion ? 'Yes' : 'No'}</div>
-            <div><span style="color:#aaa;">Vocab:</span> ${f.vocabulary || '-'}</div>
-          </div>
-        `).join("");
-      } else {
-        feedbackContainer.innerHTML = '<div style="color: #aaaaaa; font-size: 1.5rem; margin-top: 2rem;">Waiting for live feedback...</div>';
-      }
-
       // Render Selected Deck
       if (state.spotlightedTeamItem) {
         deckContainer.style.display = "block";
@@ -205,7 +162,6 @@
         promptText.style.fontSize = "3rem";
       }
     } else {
-      feedbackContainer.style.display = "none";
       deckContainer.style.display = "none";
       promptText.style.fontSize = "3rem";
       if (state.currentPrompt) {
