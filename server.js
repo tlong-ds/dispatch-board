@@ -426,6 +426,34 @@ app.get('/api/team/:id', async (req, res) => {
   }
 });
 
+// POST update specific team's item (used by team page directly, no admin auth required)
+app.post('/api/team/:id/item', async (req, res) => {
+  try {
+    const searchId = req.params.id;
+    const { item } = req.body;
+    
+    const isMongoId = mongoose.Types.ObjectId.isValid(searchId) && (String(new mongoose.Types.ObjectId(searchId)) === String(searchId));
+    let team;
+    if (isMongoId) {
+      team = await Team.findById(searchId);
+    } else {
+      team = await Team.findOne({ hashId: String(searchId) });
+    }
+    
+    if (!team) {
+      return res.status(404).json({ error: "Team not found" });
+    }
+    
+    team.currentItem = item;
+    team.sentAt = new Date();
+    await team.save();
+    
+    res.json({ success: true, item: team.currentItem });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST reset all teams (items and scores)
 app.post('/api/reset', requireAdmin, async (req, res) => {
   try {
@@ -523,17 +551,26 @@ app.get('/api/spotlight/state', async (req, res) => {
       await state.save();
     }
     
-    // Attach spotlightedTeamName
+    // Attach spotlightedTeamName and spotlightedTeamItem
     let spotlightedTeamName = null;
+    let spotlightedTeamItem = null;
     if (state.spotlightedTeamId) {
-      const globalState = await GameState.findOne({ singleton: 'STATE' });
-      if (globalState && globalState.teams && globalState.teams[state.spotlightedTeamId]) {
-        spotlightedTeamName = globalState.teams[state.spotlightedTeamId].name;
+      const isMongoId = mongoose.Types.ObjectId.isValid(state.spotlightedTeamId) && (String(new mongoose.Types.ObjectId(state.spotlightedTeamId)) === String(state.spotlightedTeamId));
+      let team;
+      if (isMongoId) {
+        team = await Team.findById(state.spotlightedTeamId);
+      } else {
+        team = await Team.findOne({ hashId: String(state.spotlightedTeamId) });
+      }
+      if (team) {
+        spotlightedTeamName = team.name;
+        spotlightedTeamItem = team.currentItem;
       }
     }
     
     const responseData = state.toObject();
     responseData.spotlightedTeamName = spotlightedTeamName;
+    responseData.spotlightedTeamItem = spotlightedTeamItem;
     
     res.json(responseData);
   } catch (err) {

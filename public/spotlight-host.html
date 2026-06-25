@@ -190,20 +190,20 @@
                     <button class="btn btn-sm btn-danger" onclick="document.getElementById('helpModal').style.display='none'">CLOSE</button>
                 </div>
                 <div style="margin-bottom:1.5rem;">
-                    <h3 style="color:var(--primary); margin-top:0;">REASON</h3>
-                    <pre style="white-space:pre-wrap; font-family:'PressStart2P', system-ui, sans-serif; font-size:0.7rem; line-height:1.5; color:#aaa;">1. THE REASON: "I think the primary reason for this is..."
+                    <h3 style="color:var(--primary); margin-top:0;">Why & What Happens</h3>
+                    <pre style="white-space:pre-wrap; font-family:'PressStart2P', system-ui, sans-serif; font-size:0.7rem; line-height:1.5; color:#aaa;">1. Why & What Happens: "I think the primary reason for this is..."
 2. THE DAILY EFFECT: "Because of this, ..."
 3. THE BIG PICTURE: "As a result, society as a whole will ultimately..."</pre>
                 </div>
                 <div style="margin-bottom:1.5rem;">
-                    <h3 style="color:var(--primary); margin-top:0;">VIEW</h3>
-                    <pre style="white-space:pre-wrap; font-family:'PressStart2P', system-ui, sans-serif; font-size:0.7rem; line-height:1.5; color:#aaa;">1. YOUR VIEW: "I strongly believe that..."
+                    <h3 style="color:var(--primary); margin-top:0;">Yes, But...</h3>
+                    <pre style="white-space:pre-wrap; font-family:'PressStart2P', system-ui, sans-serif; font-size:0.7rem; line-height:1.5; color:#aaa;">1. Yes, But...: "I strongly believe that..."
 2. THE OTHER SIDE: "Admittedly, it is true that some people might argue..."
 3. YOUR COMEBACK: "However, at the end of the day..."</pre>
                 </div>
                 <div style="margin-bottom:1.5rem;">
-                    <h3 style="color:var(--primary); margin-top:0;">FUTURE</h3>
-                    <pre style="white-space:pre-wrap; font-family:'PressStart2P', system-ui, sans-serif; font-size:0.7rem; line-height:1.5; color:#aaa;">1. THE FUTURE: "In the coming years, it is highly likely that..."
+                    <h3 style="color:var(--primary); margin-top:0;">Future Guess</h3>
+                    <pre style="white-space:pre-wrap; font-family:'PressStart2P', system-ui, sans-serif; font-size:0.7rem; line-height:1.5; color:#aaa;">1. Future Guess: "In the coming years, it is highly likely that..."
 2. THE 'WHAT IF': "If this trend continues, then we will probably see..."
 3. THE WARNING: "The only major risk with this is..."</pre>
                 </div>
@@ -226,11 +226,12 @@
         <div id="appContainer" style="display: none; flex-direction: column; height: 100vh; width: 100%;">
             <header>
             <h1>Spotlight Host</h1>
-            <div>
-                <button class="btn" onclick="window.location.href='/'">BACK TO MAIN</button>
-                <button class="btn btn-primary" onclick="window.open('spotlight.html', '_blank')" style="margin-left: 10px;">OPEN PROJECTOR</button>
+            <div style="display: flex; gap: 1rem;">
+                <button class="btn btn-danger" onclick="resetSpotlightState()">RESET GAME</button>
+                <a href="index.html" class="btn">BACK TO MAIN</a>
+                <a href="spotlight.html" target="_blank" class="btn btn-primary">OPEN PROJECTOR</a>
             </div>
-        </header>
+            </header>
 
         <div class="container">
             <div class="left-panel">
@@ -288,9 +289,9 @@
             let isTyping = false;
             
             const DECKS = {
-                A: "1. THE REASON: \"I think the primary reason for this is...\"\n2. THE DAILY EFFECT: \"Because of this, ...\"\n3. THE BIG PICTURE: \"As a result, society as a whole will ultimately...\"",
-                B: "1. YOUR VIEW: \"I strongly believe that...\"\n2. THE OTHER SIDE: \"Admittedly, it is true that some people might argue...\"\n3. YOUR COMEBACK: \"However, at the end of the day...\"",
-                C: "1. THE FUTURE: \"In the coming years, it is highly likely that...\"\n2. THE 'WHAT IF': \"If this trend continues, then we will probably see...\"\n3. THE WARNING: \"The only major risk with this is...\""
+                A: "1. Why & What Happens: \"I think the primary reason for this is...\"\n2. THE DAILY EFFECT: \"Because of this, ...\"\n3. THE BIG PICTURE: \"As a result, society as a whole will ultimately...\"",
+                B: "1. Yes, But...: \"I strongly believe that...\"\n2. THE OTHER SIDE: \"Admittedly, it is true that some people might argue...\"\n3. YOUR COMEBACK: \"However, at the end of the day...\"",
+                C: "1. Future Guess: \"In the coming years, it is highly likely that...\"\n2. THE 'WHAT IF': \"If this trend continues, then we will probably see...\"\n3. THE WARNING: \"The only major risk with this is...\""
             };
 
             let savedPassword = localStorage.getItem("adminPassword") || "";
@@ -440,6 +441,30 @@
                 fetchData();
             }
 
+            async function resetSpotlightState() {
+                if (!confirm("Are you sure you want to completely reset the Spotlight state (clears prompt and spotlighted team)?")) return;
+                
+                pendingPromptSelection = null;
+                
+                await apiFetch("/api/spotlight/current-prompt", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ currentPrompt: null })
+                });
+                
+                await apiFetch("/api/spotlight/team", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ spotlightedTeamId: null })
+                });
+
+                await apiFetch("/api/spotlight/clear-feedback", {
+                    method: "POST"
+                });
+                
+                fetchData();
+            }
+
             async function dispatchDeck(teamId, deckKey) {
                 const item = DECKS[deckKey];
                 if (!item) return;
@@ -570,9 +595,13 @@
                     const team = teamsData[spotlightState.spotlightedTeamId];
                     teamGrid.innerHTML = `
                         <div class="team-card" style="border-color: var(--primary);">
-                            <div class="team-header" style="margin-bottom: 0;">
+                            <div class="team-header" style="margin-bottom: 0.5rem;">
                                 <span class="team-name" style="color: var(--primary);">★ ${team.name}</span>
                                 <span class="status-badge active">SPOTLIGHTED</span>
+                            </div>
+                            <div style="margin-top: 0.5rem; font-size: 0.7rem; color: #ccc; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.5rem;">
+                                <strong>Selected Deck:</strong><br>
+                                <span style="white-space: pre-wrap; font-family: sans-serif; line-height: 1.4; display: block; margin-top: 0.25rem;">${team.item ? team.item : 'None selected yet'}</span>
                             </div>
                         </div>
                     `;

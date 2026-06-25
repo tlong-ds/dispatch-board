@@ -55,6 +55,24 @@
       color: var(--primary);
       text-shadow: 4px 4px 0px rgba(0,0,0,0.5);
       min-height: 150px;
+      transition: font-size 0.3s;
+    }
+
+    .deck-container {
+      display: none;
+      margin-top: 1.5rem;
+      font-size: 1rem;
+      line-height: 1.8;
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.05);
+      border: 4px solid var(--primary);
+      padding: 1.5rem;
+      text-align: left;
+      white-space: pre-wrap;
+      box-shadow: 6px 6px 0px rgba(0,0,0,0.5);
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
     }
 
     .feedback-container {
@@ -131,6 +149,7 @@
 <div class="container">
   <div class="status-text" id="statusText">WAITING FOR PROMPT</div>
   <div class="prompt-text" id="promptText">...</div>
+  <div class="deck-container" id="deckContainer"></div>
   <div class="feedback-container" id="feedbackContainer" style="display: none;"></div>
 </div>
 
@@ -153,6 +172,7 @@
     const promptText = document.getElementById('promptText');
     const statusText = document.getElementById('statusText');
     const feedbackContainer = document.getElementById('feedbackContainer');
+    const deckContainer = document.getElementById('deckContainer');
 
     if (state.spotlightedTeamId && state.spotlightedTeamName) {
       statusText.textContent = `SPOTLIGHT: ${state.spotlightedTeamName}`;
@@ -174,8 +194,20 @@
       } else {
         feedbackContainer.innerHTML = '<div style="color: #aaaaaa; font-size: 1.5rem; margin-top: 2rem;">Waiting for live feedback...</div>';
       }
+
+      // Render Selected Deck
+      if (state.spotlightedTeamItem) {
+        deckContainer.style.display = "block";
+        deckContainer.textContent = state.spotlightedTeamItem;
+        promptText.style.fontSize = "1.8rem";
+      } else {
+        deckContainer.style.display = "none";
+        promptText.style.fontSize = "3rem";
+      }
     } else {
       feedbackContainer.style.display = "none";
+      deckContainer.style.display = "none";
+      promptText.style.fontSize = "3rem";
       if (state.currentPrompt) {
         statusText.textContent = "TODAY'S TOPIC";
         statusText.style.color = "var(--text)";
