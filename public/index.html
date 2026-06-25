@@ -302,6 +302,109 @@
                     transform: translateX(-100vw);
                 }
             }
+
+            /* Modes Modal */
+            .modal-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0, 0, 0, 0.7);
+                display: none;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+                opacity: 0;
+                transition: opacity 0.3s;
+            }
+            .modal-overlay.active {
+                display: flex;
+                opacity: 1;
+            }
+            .modal-content {
+                background: var(--bg);
+                border: 4px solid var(--text);
+                box-shadow: 10px 10px 0px var(--text);
+                padding: 2rem;
+                width: 80%;
+                max-width: 800px;
+                display: flex;
+                flex-direction: column;
+                gap: 2rem;
+                position: relative;
+            }
+            .modal-close {
+                position: absolute;
+                top: 1rem;
+                right: 1rem;
+                background: none;
+                border: none;
+                font-family: "PressStart2P", system-ui, sans-serif;
+                font-size: 1.5rem;
+                color: var(--text);
+                cursor: pointer;
+            }
+            .modes-container {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 2rem;
+            }
+            .mode-card {
+                border: 4px solid var(--text);
+                height: 250px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                text-decoration: none;
+                color: var(--text);
+                font-size: 1.5rem;
+                text-transform: uppercase;
+                transition: transform 0.2s, box-shadow 0.2s;
+                position: relative;
+                overflow: hidden;
+                background-color: white;
+            }
+            .mode-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 5px 5px 0px var(--text);
+            }
+            .mode-card-dino {
+                background: white url('./extracted_assets/media/image2.svg') no-repeat right bottom / 50%;
+            }
+            .mode-card-dino::after {
+                content: '🎲';
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                font-size: 4rem;
+            }
+            .mode-card-spotlight {
+                background: #2a2a2a;
+                color: white;
+            }
+            .mode-card-spotlight::before {
+                content: '';
+                position: absolute;
+                top: -50px;
+                left: -50px;
+                width: 200px;
+                height: 200px;
+                background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%);
+                border-radius: 50%;
+            }
+            .mode-card-spotlight::after {
+                content: '';
+                position: absolute;
+                bottom: 10px;
+                right: 10px;
+                width: 80px;
+                height: 80px;
+                background: url('./extracted_assets/media/image2.svg') no-repeat center center / contain;
+                filter: brightness(0) invert(1);
+            }
         </style>
     </head>
     <body>
@@ -326,7 +429,17 @@
         <div class="bg-cactus-large" style="left: calc(50% + 460px)"></div>
         <div class="bg-road"></div>
 
-        <header>
+        <div id="authOverlay" style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:var(--bg); z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+            <div style="background:var(--white); border:4px solid var(--text); padding:2rem; text-align:center; box-shadow:8px 8px 0 var(--text);">
+                <h2 style="margin-top:0; margin-bottom:1rem; font-size:1.2rem; text-transform:uppercase;">Admin Login</h2>
+                <input type="password" id="adminPwdInput" placeholder="Password" style="padding:0.8rem; font-family:'PressStart2P',system-ui,sans-serif; font-size:0.8rem; border:2px solid var(--text); margin-bottom:1rem; width:200px; text-align:center;" onkeypress="if(event.key==='Enter') loginAdmin()">
+                <br>
+                <button class="btn" onclick="loginAdmin()">LOGIN</button>
+            </div>
+        </div>
+
+        <div id="appContainer" style="display: none; flex-direction: column; height: 100vh; width: 100%;">
+            <header>
             <h1>Dispatch Host</h1>
             <div>
                 <button
@@ -337,10 +450,10 @@
                 </button>
                 <button
                     class="btn btn-primary"
-                    onclick="window.open('dino-party', '_blank')"
+                    onclick="document.getElementById('modesModal').classList.add('active')"
                     style="margin-left: 10px"
                 >
-                    DINO PARTY
+                    MODES
                 </button>
                 <button
                     class="btn btn-danger"
@@ -444,19 +557,18 @@
                 }
             }
 
-            function getAdminPassword() {
-                let pwd = sessionStorage.getItem("adminPassword");
-                if (!pwd) {
-                    pwd = prompt("Enter Admin Password:");
-                    if (pwd) sessionStorage.setItem("adminPassword", pwd);
-                }
-                return pwd || "";
+            let savedPassword = localStorage.getItem("adminPassword") || "";
+
+            async function loginAdmin() {
+                const input = document.getElementById("adminPwdInput").value;
+                savedPassword = input;
+                await initApp();
             }
 
             async function apiFetch(path, options = {}) {
                 const headers = {
                     ...options.headers,
-                    "x-admin-password": getAdminPassword(),
+                    "x-admin-password": savedPassword,
                 };
                 const res = await fetch(API_BASE_URL + path, {
                     cache: "no-store",
@@ -464,14 +576,31 @@
                     headers,
                 });
                 if (res.status === 401) {
-                    sessionStorage.removeItem("adminPassword");
-                    alert(
-                        "Invalid or missing admin password. Please try again.",
-                    );
-                    window.location.reload();
+                    localStorage.removeItem("adminPassword");
+                    document.getElementById('authOverlay').style.display = 'flex';
+                    document.getElementById('appContainer').style.display = 'none';
                     throw new Error("Unauthorized");
                 }
                 return res;
+            }
+
+            let appInitialized = false;
+            async function initApp() {
+                try {
+                    await apiFetch('/api/state'); // test auth
+                    localStorage.setItem("adminPassword", savedPassword);
+                    document.getElementById('authOverlay').style.display = 'none';
+                    document.getElementById('appContainer').style.display = 'flex';
+                    if (!appInitialized) {
+                        appInitialized = true;
+                        fetchState();
+                        setInterval(() => {
+                            if (!isTeamTyping && !isItemsTyping) fetchState();
+                        }, 2000);
+                    }
+                } catch(e) {
+                    console.error("Login failed or unauthorized");
+                }
             }
 
             const textarea = document.getElementById("bulkItemsTextarea");
@@ -746,12 +875,23 @@
                     isTeamTyping = false;
             });
 
-            setInterval(() => {
-                if (!isTeamTyping && !isItemsTyping) fetchState();
-            }, 2000);
-
-            fetchState();
+            initApp();
         </script>
+
+        <div class="modal-overlay" id="modesModal">
+            <div class="modal-content">
+                <button class="modal-close" onclick="document.getElementById('modesModal').classList.remove('active')">&times;</button>
+                <h2 style="text-align: center; font-size: 1.5rem; margin-top: 0;">ADDITIONAL MODES</h2>
+                <div class="modes-container">
+                    <a href="dino-party.html" target="_blank" class="mode-card mode-card-dino" onclick="document.getElementById('modesModal').classList.remove('active')">
+                        <span style="z-index: 1;">Dino Party</span>
+                    </a>
+                    <a href="spotlight-host.html" target="_blank" class="mode-card mode-card-spotlight" onclick="document.getElementById('modesModal').classList.remove('active')">
+                        <span style="z-index: 1;">Spotlight</span>
+                    </a>
+                </div>
+            </div>
+        </div>
 
         <script src="sounds.js"></script>
     </body>

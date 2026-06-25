@@ -42,11 +42,35 @@ const Team = mongoose.model('Team', teamSchema);
 
 const gameStateSchema = new mongoose.Schema({
   singleton: { type: String, default: 'STATE', unique: true },
+  adminPassword: { type: String, default: '' },
   timerIsRunning: { type: Boolean, default: false },
   timerEndTime: { type: Date, default: null },
   timerRemaining: { type: Number, default: 300 }
 });
 const GameState = mongoose.model('GameState', gameStateSchema);
+
+const spotlightStateSchema = new mongoose.Schema({
+  singleton: { type: String, default: 'SPOTLIGHT', unique: true },
+  prompts: [String],
+  currentPrompt: { type: String, default: null },
+  spotlightedTeamId: { type: String, default: null },
+  timerIsRunning: { type: Boolean, default: false },
+  timerEndTime: { type: Date, default: null },
+  timerRemaining: { type: Number, default: 45 },
+  feedbacks: {
+    type: [{
+      fromTeamId: String,
+      fromTeamName: String,
+      fluency: Boolean,
+      structure: String,
+      completion: Boolean,
+      vocabulary: String,
+      timestamp: { type: Date, default: Date.now }
+    }],
+    default: []
+  }
+});
+const SpotlightState = mongoose.model('SpotlightState', spotlightStateSchema);
 
 // Dino Party Schema
 const dinoPartyPlayerSchema = new mongoose.Schema({
@@ -174,16 +198,26 @@ app.get('/api/ping', (req, res) => {
 });
 
 // Admin authentication middleware
-const requireAdmin = (req, res, next) => {
-  const adminPassword = process.env.ADMIN_PASSWORD;
-  if (!adminPassword) {
-    return next(); // If no password is set on server, allow access
-  }
-  const providedPassword = req.headers['x-admin-password'];
-  if (providedPassword === adminPassword) {
-    next();
-  } else {
-    res.status(401).json({ error: 'Unauthorized' });
+const requireAdmin = async (req, res, next) => {
+  try {
+    let state = await GameState.findOne({ singleton: 'STATE' });
+    let adminPassword = state ? state.adminPassword : '';
+    // Fallback to env var if database is empty, to prevent lockout if someone manually set env var
+    if (!adminPassword && process.env.ADMIN_PASSWORD) {
+        adminPassword = process.env.ADMIN_PASSWORD;
+    }
+    
+    if (!adminPassword) {
+      return next(); // If no password is set, allow access
+    }
+    const providedPassword = req.headers['x-admin-password'];
+    if (providedPassword === adminPassword) {
+      next();
+    } else {
+      res.status(401).json({ error: 'Unauthorized' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
@@ -369,7 +403,7 @@ app.get('/api/team/:id', async (req, res) => {
     let team = await Team.findById(searchId);
     
     if (team) {
-      res.json({ item: team.currentItem, name: team.name });
+      res.json({ _id: team._id, item: team.currentItem, name: team.name });
     } else {
       res.status(404).json({ error: "Team not found" });
     }
@@ -439,6 +473,163 @@ app.post('/api/timer', requireAdmin, async (req, res) => {
 
     await state.save();
     res.json({ success: true, timer: { isRunning: state.timerIsRunning, endTime: state.timerEndTime, remaining: state.timerRemaining } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST set admin password
+app.post('/api/admin-password', requireAdmin, async (req, res) => {
+  try {
+    const { password } = req.body;
+    await GameState.findOneAndUpdate(
+      { singleton: 'STATE' },
+      { $set: { adminPassword: password || '' } },
+      { upsert: true }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// === SPOTLIGHT API ===
+
+app.get('/api/spotlight/state', async (req, res) => {
+  try {
+    let state = await SpotlightState.findOne({ singleton: 'SPOTLIGHT' });
+    if (!state) {
+      state = new SpotlightState({
+        prompts: [
+          "How has technology changed the way people communicate?",
+          "Do you think people will read fewer books in the future?",
+          "What are the advantages and disadvantages of living in a large city?"
+        ]
+      });
+      await state.save();
+    }
+    res.json(state);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/spotlight/prompts', requireAdmin, async (req, res) => {
+  try {
+    const { prompts } = req.body;
+    if (!Array.isArray(prompts)) return res.status(400).json({ error: 'Array required' });
+    await SpotlightState.findOneAndUpdate(
+      { singleton: 'SPOTLIGHT' },
+      { $set: { prompts } },
+      { upsert: true }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/spotlight/current-prompt', requireAdmin, async (req, res) => {
+  try {
+    const { currentPrompt } = req.body;
+    await SpotlightState.findOneAndUpdate(
+      { singleton: 'SPOTLIGHT' },
+      { $set: { currentPrompt } },
+      { upsert: true }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/spotlight/team', requireAdmin, async (req, res) => {
+  try {
+    const { spotlightedTeamId } = req.body;
+    await SpotlightState.findOneAndUpdate(
+      { singleton: 'SPOTLIGHT' },
+      { $set: { spotlightedTeamId, feedbacks: [] } }, // clear feedback when switching spotlight
+      { upsert: true }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/spotlight/timer', requireAdmin, async (req, res) => {
+  try {
+    const { action, value } = req.body;
+    let state = await SpotlightState.findOne({ singleton: 'SPOTLIGHT' });
+    if (!state) state = new SpotlightState();
+
+    if (action === 'start') {
+      if (!state.timerIsRunning) {
+        state.timerIsRunning = true;
+        state.timerEndTime = new Date(Date.now() + (state.timerRemaining * 1000));
+      }
+    } else if (action === 'pause') {
+      if (state.timerIsRunning) {
+        state.timerIsRunning = false;
+        if (state.timerEndTime) {
+          const rem = Math.max(0, Math.floor((state.timerEndTime.getTime() - Date.now()) / 1000));
+          state.timerRemaining = rem;
+        }
+      }
+    } else if (action === 'reset') {
+      state.timerIsRunning = false;
+      state.timerRemaining = parseInt(value, 10) || 45;
+      state.timerEndTime = null;
+    }
+
+    await state.save();
+    res.json({ success: true, timer: { isRunning: state.timerIsRunning, endTime: state.timerEndTime, remaining: state.timerRemaining } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/spotlight/feedback', async (req, res) => {
+  try {
+    const { teamId, fluency, structure, completion, vocabulary } = req.body;
+    
+    // verify team exists
+    const isMongoId = mongoose.Types.ObjectId.isValid(teamId) && (String(new mongoose.Types.ObjectId(teamId)) === String(teamId));
+    let team;
+    if (isMongoId) {
+      team = await Team.findById(teamId);
+    } else {
+      team = await Team.findOne({ hashId: String(teamId) }).then(t => t || (!isNaN(Number(teamId)) ? Team.findOne({ teamId: Number(teamId) }) : null));
+    }
+
+    if (!team) return res.status(404).json({ error: 'Team not found' });
+
+    let state = await SpotlightState.findOne({ singleton: 'SPOTLIGHT' });
+    if (!state) state = new SpotlightState();
+
+    // Check if team already submitted feedback for current spotlight
+    const existingIdx = state.feedbacks.findIndex(f => f.fromTeamId === String(team._id));
+    if (existingIdx !== -1) {
+      state.feedbacks[existingIdx] = { fromTeamId: String(team._id), fromTeamName: team.name, fluency, structure, completion, vocabulary, timestamp: new Date() };
+    } else {
+      state.feedbacks.push({ fromTeamId: String(team._id), fromTeamName: team.name, fluency, structure, completion, vocabulary, timestamp: new Date() });
+    }
+
+    await state.save();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/spotlight/clear-feedback', requireAdmin, async (req, res) => {
+  try {
+    await SpotlightState.findOneAndUpdate(
+      { singleton: 'SPOTLIGHT' },
+      { $set: { feedbacks: [] } },
+      { upsert: true }
+    );
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -744,8 +935,20 @@ app.get('/dino-party', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dino-party.html'));
 });
 
+app.get('/dino-party', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'dino-party.html'));
+});
+
 app.get('/dino-party/play', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dino-party-player.html'));
+});
+
+app.get('/spotlight-host', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'spotlight-host.html'));
+});
+
+app.get('/spotlight', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'spotlight.html'));
 });
 
 app.listen(PORT, '0.0.0.0', () => {

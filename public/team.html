@@ -47,7 +47,7 @@
       line-height: 1.5;
     }
     .item-display {
-      font-size: 2rem;
+      font-size: 1.2rem;
       font-weight: 800;
       color: var(--text);
       opacity: 0;
@@ -57,9 +57,62 @@
       background: white;
       border: 4px solid var(--text);
       box-shadow: 6px 6px 0px var(--text);
-      padding: 3rem 4rem;
+      padding: 2rem;
       display: inline-block;
       min-width: 300px;
+      white-space: pre-wrap;
+      text-align: left;
+      line-height: 1.5;
+    }
+    .feedback-container {
+      display: none;
+      flex-direction: column;
+      gap: 1rem;
+      background: white;
+      border: 4px solid var(--text);
+      box-shadow: 6px 6px 0px var(--text);
+      padding: 2rem;
+      width: 90%;
+      max-width: 500px;
+      text-align: left;
+      z-index: 20;
+    }
+    .feedback-container.active {
+      display: flex;
+    }
+    .feedback-container h2 {
+      margin-top: 0;
+      font-size: 1.2rem;
+      text-align: center;
+    }
+    .feedback-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      font-size: 0.6rem;
+      line-height: 1.5;
+    }
+    .feedback-field label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+    }
+    .feedback-field input[type="text"] {
+      padding: 0.5rem;
+      font-family: 'PressStart2P', system-ui, sans-serif;
+      font-size: 0.6rem;
+      border: 2px solid var(--text);
+    }
+    .btn {
+      background: var(--text);
+      color: var(--bg);
+      border: 2px solid var(--text);
+      padding: 1rem;
+      font-family: 'PressStart2P', system-ui, sans-serif;
+      font-size: 0.8rem;
+      cursor: pointer;
+      margin-top: 1rem;
     }
     body.has-item .status {
       display: none;
@@ -222,9 +275,32 @@
 
 <div class="team-badge" id="teamBadge">Loading Team...</div>
 
-<div class="container">
+<div class="container" id="mainContainer">
   <div class="status" id="status">Waiting for your item...</div>
   <div class="item-display" id="itemDisplay"></div>
+</div>
+
+<div class="feedback-container" id="feedbackContainer">
+  <h2>Peer Audit</h2>
+  <div class="feedback-field">
+    <label><input type="checkbox" id="fbFluency"> Speaker hesitated for >3s</label>
+  </div>
+  <div class="feedback-field">
+    <span>Structure Guessed:</span>
+    <label><input type="radio" name="fbStructure" value="Why/What"> Why & What Happens</label>
+    <label><input type="radio" name="fbStructure" value="Yes/But"> Yes, But...</label>
+    <label><input type="radio" name="fbStructure" value="Future Guess"> Future Guess</label>
+    <label><input type="radio" name="fbStructure" value="None"> Unsure</label>
+  </div>
+  <div class="feedback-field">
+    <label><input type="checkbox" id="fbCompletion"> Used all 3 sentence starters</label>
+  </div>
+  <div class="feedback-field">
+    <span>Advanced Vocab Used:</span>
+    <input type="text" id="fbVocab" placeholder="Type a word/phrase...">
+  </div>
+  <button class="btn" onclick="submitFeedback()">Submit Feedback</button>
+  <div id="fbThanks" style="display:none; text-align:center; color: #4ade80; font-size: 0.8rem; margin-top: 1rem;">Submitted!</div>
 </div>
 
 <script>
@@ -247,22 +323,34 @@
   }
 
   let currentItem = null;
+  let currentTeamId = null;
+  let spotlightState = null;
+  let feedbackSubmittedFor = null;
 
   async function pollItem() {
     if (!searchId) return;
     
     try {
-      const res = await fetch(API_BASE_URL + `/api/team/${searchId}`);
-      if (res.ok) {
-        const data = await res.json();
+      const [teamRes, spotlightRes] = await Promise.all([
+         fetch(API_BASE_URL + `/api/team/${searchId}`),
+         fetch(API_BASE_URL + `/api/spotlight/state`)
+      ]);
+      
+      if (spotlightRes.ok) spotlightState = await spotlightRes.json();
+      
+      if (teamRes.ok) {
+        const data = await teamRes.json();
         
         if (data.name) {
           document.getElementById('teamBadge').textContent = data.name;
         }
+        currentTeamId = data._id;
 
         if (data.item !== currentItem) {
           currentItem = data.item;
-          updateUI();
+          updateUI(true); // Item changed
+        } else {
+          updateUI(false); // Maybe spotlight changed
         }
       }
     } catch (err) {
@@ -270,25 +358,91 @@
     }
   }
 
-  function updateUI() {
+  function updateUI(itemChanged) {
     const itemDisplay = document.getElementById('itemDisplay');
+    const mainContainer = document.getElementById('mainContainer');
+    const feedbackContainer = document.getElementById('feedbackContainer');
     const dino = document.getElementById('dino');
+    const status = document.getElementById('status');
     
+    // Check spotlight state first
+    if (spotlightState && spotlightState.spotlightedTeamId) {
+      if (spotlightState.spotlightedTeamId !== currentTeamId) {
+        // We are NOT the spotlighted team. Show feedback form.
+        mainContainer.style.display = 'none';
+        feedbackContainer.classList.add('active');
+        document.body.style.backgroundColor = '#E2E8F0';
+        
+        // Reset feedback form if it's a new spotlight
+        if (feedbackSubmittedFor !== spotlightState.spotlightedTeamId) {
+          document.getElementById('fbFluency').checked = false;
+          document.querySelectorAll('input[name="fbStructure"]').forEach(r => r.checked = false);
+          document.getElementById('fbCompletion').checked = false;
+          document.getElementById('fbVocab').value = '';
+          document.getElementById('fbThanks').style.display = 'none';
+        }
+        return;
+      }
+    }
+    
+    // We are either the spotlighted team, or no spotlight is active. Show normal view.
+    mainContainer.style.display = 'block';
+    feedbackContainer.classList.remove('active');
+    
+    if (spotlightState && spotlightState.spotlightedTeamId === currentTeamId) {
+        document.body.style.backgroundColor = '#fde047'; // Highlight background for spotlighted team
+    } else if (currentItem) {
+        document.body.style.backgroundColor = '#E2E8F0';
+    } else {
+        document.body.style.backgroundColor = 'transparent';
+    }
+
     if (currentItem) {
       itemDisplay.textContent = currentItem;
       document.body.classList.add('has-item');
-      if (navigator.vibrate) navigator.vibrate(200);
       
-      // Trigger jump animation and sound
-      if (dino) {
-        dino.classList.remove('jumping');
-        void dino.offsetWidth; // trigger reflow
-        dino.classList.add('jumping');
-        if (window.AudioFX) window.AudioFX.playJump();
+      if (itemChanged) {
+          if (navigator.vibrate) navigator.vibrate(200);
+          // Trigger jump animation and sound
+          if (dino) {
+            dino.classList.remove('jumping');
+            void dino.offsetWidth; // trigger reflow
+            dino.classList.add('jumping');
+            if (window.AudioFX) window.AudioFX.playJump();
+          }
       }
     } else {
       itemDisplay.textContent = '';
       document.body.classList.remove('has-item');
+      status.textContent = "Waiting for your item...";
+    }
+  }
+
+  async function submitFeedback() {
+    if (!currentTeamId || !spotlightState || !spotlightState.spotlightedTeamId) return;
+    
+    const fluency = document.getElementById('fbFluency').checked;
+    const structureEl = document.querySelector('input[name="fbStructure"]:checked');
+    const structure = structureEl ? structureEl.value : null;
+    const completion = document.getElementById('fbCompletion').checked;
+    const vocabulary = document.getElementById('fbVocab').value.trim();
+    
+    try {
+      await fetch(API_BASE_URL + '/api/spotlight/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          teamId: currentTeamId,
+          fluency,
+          structure,
+          completion,
+          vocabulary
+        })
+      });
+      feedbackSubmittedFor = spotlightState.spotlightedTeamId;
+      document.getElementById('fbThanks').style.display = 'block';
+    } catch (err) {
+      console.error(err);
     }
   }
 

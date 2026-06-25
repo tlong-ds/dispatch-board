@@ -289,7 +289,15 @@
   </style>
 </head>
 <body>
-
+<div id="authOverlay" style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:var(--bg); z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+    <div style="background:var(--white); border:4px solid var(--text); padding:2rem; text-align:center; box-shadow:8px 8px 0 var(--text);">
+        <h2 style="margin-top:0; margin-bottom:1rem; font-size:1.2rem; text-transform:uppercase;">Admin Login</h2>
+        <input type="password" id="adminPwdInput" placeholder="Password" style="padding:0.8rem; font-family:'PressStart2P',system-ui,sans-serif; font-size:0.8rem; border:2px solid var(--text); margin-bottom:1rem; width:200px; text-align:center;" onkeypress="if(event.key==='Enter') loginAdmin()">
+        <br>
+        <button class="btn" onclick="loginAdmin()">LOGIN</button>
+    </div>
+</div>
+<div id="appContainer" style="display: none; flex-direction: column; height: 100vh; width: 100%;">
 <header>
   <h1>Dino Party</h1>
   <div class="hdr-btns">
@@ -407,10 +415,35 @@
     <div class="qr-grid" id="qrGridEl"></div>
     <button class="close-btn" onclick="closeQr()">CLOSE</button>
   </div>
-</div>
+</div> <!-- End of appContainer -->
 
 <script>
 const API='__API_BASE_URL__'.startsWith('__')?'http://localhost:3000':'__API_BASE_URL__';
+
+let savedPassword = localStorage.getItem("adminPassword") || "";
+
+async function loginAdmin() {
+    const input = document.getElementById("adminPwdInput").value;
+    savedPassword = input;
+    await initApp();
+}
+
+let appInitialized = false;
+async function initApp() {
+    try {
+        await af('/api/state'); // test auth
+        localStorage.setItem("adminPassword", savedPassword);
+        document.getElementById('authOverlay').style.display = 'none';
+        document.getElementById('appContainer').style.display = 'flex';
+        if (!appInitialized) {
+            appInitialized = true;
+            fetchState();
+            setInterval(fetchState, 1500);
+        }
+    } catch(e) {
+        console.error("Login failed or unauthorized");
+    }
+}
 
 /* ── 8-bit pixel art icons (8x8 grids → SVG rects) ── */
 const PIX={
@@ -931,27 +964,35 @@ async function fetchState(){
   if(isAnimating) return;
   try{
     const r=await fetch(API+'/api/dino-party/state',{cache:'no-store'});
-    if(!r.ok)return;const g=await r.json();
-    renderQuestionsEditor(g);
-    const h=JSON.stringify(g);if(h===lhash)return;
+    const g=await r.json();
+    if(g.error)return;
+    if (isAnimating && g.lastRoll?.timestamp === pendingState?.lastRoll?.timestamp) return;
     
-    // Check if we should animate
-    const hasNewRoll = gs && g.lastRoll && g.lastRoll.playerName && 
-                       (!gs.lastRoll || gs.lastRoll.timestamp !== g.lastRoll.timestamp);
-                       
-    if (hasNewRoll) {
-      animateTurn(g);
-    } else {
-      lhash=h;gs=g;
+    if (g.lastRoll && (!gs || g.lastRoll.timestamp !== gs.lastRoll?.timestamp)) {
+      if (gs && gs.gameStarted && g.gameStarted) {
+         animateTurn(g);
+      } else {
+         gs=g; lhash=JSON.stringify(g);
+         renderBoard(g);renderPlayers(g);renderRoll(g);checkWin(g);
+         renderQuestionsEditor(g);
+      }
+    } else if (!isAnimating && JSON.stringify(g)!==lhash){
+      gs=g;lhash=JSON.stringify(g);
       renderBoard(g);renderPlayers(g);renderRoll(g);checkWin(g);
+      renderQuestionsEditor(g);
     }
-  }catch(e){console.error(e);}
+  } catch(e) {}
 }
 
-function getpwd(){let p=sessionStorage.getItem('ap');if(!p){p=prompt('Enter Admin Password:');if(p)sessionStorage.setItem('ap',p);}return p||'';}
 async function af(path,opts={}){
-  const r=await fetch(API+path,{cache:'no-store',...opts,headers:{'Content-Type':'application/json','x-admin-password':getpwd(),...opts.headers}});
-  if(r.status===401){sessionStorage.removeItem('ap');alert('Wrong password');window.location.reload();throw new Error('401');}
+  const headers = { 'Content-Type': 'application/json', 'x-admin-password': localStorage.getItem('adminPassword') || '', ...opts.headers };
+  const r=await fetch(API+path,{cache:'no-store',...opts,headers});
+  if(r.status===401){
+      localStorage.removeItem("adminPassword");
+      document.getElementById('authOverlay').style.display = 'flex';
+      document.getElementById('appContainer').style.display = 'none';
+      throw new Error('401');
+  }
   return r;
 }
 
@@ -1058,7 +1099,7 @@ function playV(){
   try{const c=new(window.AudioContext||window.webkitAudioContext)();[[523.25,0,.12],[523.25,.12,.12],[523.25,.24,.12],[523.25,.36,.4],[392,.76,.4],[466.16,1.16,.4],[523.25,1.56,.15],[466.16,1.71,.15],[523.25,1.86,.8],[659.25,2.7,.2],[698.46,2.9,.2],[783.99,3.1,.4],[523.25,3.5,.4],[659.25,3.9,.2],[698.46,4.1,.2],[783.99,4.3,.4],[1046.5,4.7,1.2]].forEach(([f,s,d])=>{const o=c.createOscillator(),g=c.createGain();o.type='square';o.frequency.value=f;g.gain.setValueAtTime(0,c.currentTime+s);g.gain.linearRampToValueAtTime(.1,c.currentTime+s+.02);g.gain.setValueAtTime(.1,c.currentTime+s+d-.04);g.gain.linearRampToValueAtTime(0,c.currentTime+s+d);o.connect(g);g.connect(c.destination);o.start(c.currentTime+s);o.stop(c.currentTime+s+d+.01);});}catch(e){}
 }
 
-setInterval(fetchState,1500);fetchState();
+initApp();
 </script>
 </body>
 </html>

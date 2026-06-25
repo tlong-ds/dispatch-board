@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Spotlight Host</title>
+        <style>
+            @font-face {
+                font-family: "PressStart2P";
+                src: url("./PressStart2P-Regular.ttf") format("truetype");
+            }
+            :root {
+                --bg: #2a2a2a;
+                --text: #ffffff;
+                --primary: #ffd700;
+                --success: #4ade80;
+                --danger: #ef4444;
+            }
+            body {
+                margin: 0;
+                font-family: "PressStart2P", system-ui, sans-serif;
+                background-color: var(--bg);
+                color: var(--text);
+                display: flex;
+                flex-direction: column;
+                height: 100vh;
+                overflow: hidden;
+            }
+            header {
+                padding: 1.5rem;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: #1a1a1a;
+                border-bottom: 4px solid var(--text);
+            }
+            h1 {
+                margin: 0;
+                font-size: 1.5rem;
+                color: var(--primary);
+                text-transform: uppercase;
+            }
+            .btn {
+                color: var(--bg);
+                background-color: var(--text);
+                border: 4px solid var(--text);
+                padding: 1rem 1.5rem;
+                cursor: pointer;
+                font-family: "PressStart2P", system-ui, sans-serif;
+                font-size: 0.8rem;
+                transition: transform 0.1s;
+                text-decoration: none;
+                display: inline-block;
+            }
+            .btn-primary {
+                background-color: var(--primary);
+                border-color: var(--primary);
+                color: var(--bg);
+            }
+            .btn-danger {
+                background-color: var(--danger);
+                border-color: var(--danger);
+                color: white;
+            }
+            .btn:active {
+                transform: translateY(4px);
+            }
+            .btn-sm {
+                padding: 0.8rem 1rem;
+                font-size: 0.6rem;
+            }
+            .container {
+                display: flex;
+                flex: 1;
+                overflow: hidden;
+                gap: 1.5rem;
+                padding: 1.5rem;
+            }
+            .left-panel, .right-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 1.5rem;
+                overflow-y: auto;
+            }
+            .panel {
+                background: #1a1a1a;
+                border: 4px solid var(--text);
+                padding: 1.5rem;
+                display: flex;
+                flex-direction: column;
+            }
+            h2 {
+                margin-top: 0;
+                font-size: 1rem;
+                color: var(--primary);
+                margin-bottom: 1rem;
+            }
+            textarea {
+                flex: 1;
+                width: 100%;
+                background: #333;
+                color: var(--text);
+                border: 4px solid var(--text);
+                padding: 1rem;
+                font-family: "PressStart2P", system-ui, sans-serif;
+                font-size: 0.8rem;
+                line-height: 1.8;
+                resize: none;
+                box-sizing: border-box;
+                min-height: 200px;
+            }
+            textarea:focus {
+                outline: none;
+                border-color: var(--primary);
+            }
+            select {
+                background: #333;
+                color: var(--text);
+                border: 2px solid var(--text);
+                padding: 0.5rem;
+                font-family: "PressStart2P", system-ui, sans-serif;
+                font-size: 0.6rem;
+                width: 100%;
+                margin-bottom: 0.5rem;
+            }
+            .team-card {
+                background: #333;
+                border: 4px solid var(--text);
+                padding: 1rem;
+                margin-bottom: 1rem;
+            }
+            .team-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 1rem;
+            }
+            .team-name {
+                font-size: 1rem;
+            }
+            .status-badge {
+                font-size: 0.6rem;
+                padding: 0.3rem 0.6rem;
+                background: var(--text);
+                color: var(--bg);
+                border-radius: 4px;
+            }
+            .status-badge.active {
+                background: var(--primary);
+                color: var(--bg);
+                animation: pulse 2s infinite;
+            }
+            .controls-row {
+                display: flex;
+                gap: 0.5rem;
+                margin-bottom: 0.5rem;
+            }
+            @keyframes pulse {
+                0% { opacity: 1; }
+                50% { opacity: 0.5; }
+                100% { opacity: 1; }
+            }
+            .feedback-item {
+                background: #333;
+                border: 2px solid var(--text);
+                padding: 1rem;
+                margin-bottom: 1rem;
+                font-size: 0.7rem;
+                line-height: 1.5;
+            }
+            .feedback-item span {
+                color: var(--primary);
+            }
+        </style>
+    </head>
+    <body>
+        <div id="authOverlay" style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:var(--bg); z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+            <div style="background:#1a1a1a; border:4px solid var(--text); padding:2rem; text-align:center; box-shadow:8px 8px 0 var(--text);">
+                <h2 style="margin-top:0; margin-bottom:1rem; font-size:1.2rem; text-transform:uppercase;">Admin Login</h2>
+                <input type="password" id="adminPwdInput" placeholder="Password" style="padding:0.8rem; font-family:'PressStart2P',system-ui,sans-serif; font-size:0.8rem; border:2px solid var(--text); margin-bottom:1rem; width:200px; text-align:center; background:#333; color:var(--text);" onkeypress="if(event.key==='Enter') loginAdmin()">
+                <br>
+                <button class="btn btn-primary" onclick="loginAdmin()">LOGIN</button>
+            </div>
+        </div>
+
+        <div id="appContainer" style="display: none; flex-direction: column; height: 100vh; width: 100%;">
+            <header>
+            <h1>Spotlight Host</h1>
+            <div>
+                <button class="btn" onclick="window.location.href='/'">BACK TO MAIN</button>
+                <button class="btn btn-primary" onclick="window.open('spotlight.html', '_blank')" style="margin-left: 10px;">OPEN PROJECTOR</button>
+            </div>
+        </header>
+
+        <div class="container">
+            <div class="left-panel">
+                <div class="panel" style="flex: 1;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2>Prompt Bank</h2>
+                        <span id="saveStatus" style="font-size: 0.6rem; color: var(--success); opacity: 0; transition: opacity 0.3s;">Saved</span>
+                    </div>
+                    <div style="font-size: 0.6rem; color: #aaa; margin-bottom: 1rem;">Each line is a prompt. Click away to save.</div>
+                    <textarea id="promptsTextarea"></textarea>
+                    
+                    <div style="margin-top: 1rem;">
+                        <select id="promptSelect">
+                            <option value="" disabled selected>Select a prompt to display...</option>
+                        </select>
+                        <div class="controls-row" style="margin-top: 0.5rem;">
+                            <button class="btn btn-primary" style="flex: 1;" onclick="sendPrompt()">SEND TO PROJECTOR</button>
+                            <button class="btn btn-danger" onclick="clearPrompt()">CLEAR</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h2>Projector Timer</h2>
+                    <div class="controls-row">
+                        <button class="btn btn-primary" style="flex: 1;" onclick="controlTimer('start')">START 45s</button>
+                        <button class="btn" onclick="controlTimer('pause')">PAUSE</button>
+                        <button class="btn btn-danger" onclick="controlTimer('reset', 45)">RESET</button>
+                    </div>
+                    <div id="timerStatus" style="font-size: 0.8rem; margin-top: 1rem; text-align: center;">Waiting...</div>
+                </div>
+                
+                <div class="panel" style="flex: 1; overflow-y: auto;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2>Live Feedback</h2>
+                        <button class="btn btn-danger btn-sm" onclick="clearFeedback()">CLEAR ALL</button>
+                    </div>
+                    <div id="feedbackList">
+                        <!-- Feedbacks injected here -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <div class="panel" style="flex: 1;">
+                    <h2>Teams & Dispatch</h2>
+                    <div id="teamGrid">
+                        <!-- Teams injected here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            const API_BASE_URL = window.location.origin;
+            let spotlightState = null;
+            let teamsData = {};
+            let isTyping = false;
+            
+            const DECKS = {
+                A: "1. THE REASON: \"I think the primary reason for this is...\"\n2. THE DAILY EFFECT: \"Because of this, ...\"\n3. THE BIG PICTURE: \"As a result, society as a whole will ultimately...\"",
+                B: "1. YOUR VIEW: \"I strongly believe that...\"\n2. THE OTHER SIDE: \"Admittedly, it is true that some people might argue...\"\n3. YOUR COMEBACK: \"However, at the end of the day...\"",
+                C: "1. THE FUTURE: \"In the coming years, it is highly likely that...\"\n2. THE 'WHAT IF': \"If this trend continues, then we will probably see...\"\n3. THE WARNING: \"The only major risk with this is...\""
+            };
+
+            let savedPassword = localStorage.getItem("adminPassword") || "";
+
+            async function loginAdmin() {
+                const input = document.getElementById("adminPwdInput").value;
+                savedPassword = input;
+                await initApp();
+            }
+
+            async function apiFetch(path, options = {}) {
+                const headers = { ...options.headers, "x-admin-password": savedPassword };
+                const res = await fetch(API_BASE_URL + path, { cache: "no-store", ...options, headers });
+                if (res.status === 401) {
+                    localStorage.removeItem("adminPassword");
+                    document.getElementById('authOverlay').style.display = 'flex';
+                    document.getElementById('appContainer').style.display = 'none';
+                    throw new Error("Unauthorized");
+                }
+                return res;
+            }
+
+            let appInitialized = false;
+            async function initApp() {
+                try {
+                    await apiFetch("/api/state"); // test auth
+                    localStorage.setItem("adminPassword", savedPassword);
+                    document.getElementById('authOverlay').style.display = 'none';
+                    document.getElementById('appContainer').style.display = 'flex';
+                    if (!appInitialized) {
+                        appInitialized = true;
+                        fetchData();
+                        setInterval(() => {
+                            if (!isTyping) fetchData();
+                            updateTimerDisplay();
+                        }, 1000);
+                    }
+                } catch(e) {
+                    console.error("Login failed or unauthorized");
+                }
+            }
+
+            async function fetchData() {
+                try {
+                    const [stateRes, globalRes] = await Promise.all([
+                        apiFetch("/api/spotlight/state"),
+                        apiFetch("/api/state")
+                    ]);
+                    spotlightState = await stateRes.json();
+                    const globalState = await globalRes.json();
+                    teamsData = globalState.teams || {};
+                    render();
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+
+            async function savePrompts() {
+                const text = textarea.value;
+                const prompts = text.split("\n").filter(p => p.trim() !== "");
+                await apiFetch("/api/spotlight/prompts", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ prompts })
+                });
+                document.getElementById("saveStatus").style.opacity = 1;
+                setTimeout(() => document.getElementById("saveStatus").style.opacity = 0, 2000);
+                fetchData();
+            }
+
+            async function sendPrompt() {
+                const select = document.getElementById("promptSelect");
+                const currentPrompt = select.value;
+                if (!currentPrompt) return;
+                await apiFetch("/api/spotlight/current-prompt", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ currentPrompt })
+                });
+                fetchData();
+            }
+
+            async function clearPrompt() {
+                await apiFetch("/api/spotlight/current-prompt", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ currentPrompt: null })
+                });
+                fetchData();
+            }
+
+            async function dispatchDeck(teamId, deckKey) {
+                const item = DECKS[deckKey];
+                if (!item) return;
+                await apiFetch("/api/send", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ teamId, item })
+                });
+                fetchData();
+            }
+
+            async function toggleSpotlight(teamId) {
+                const isCurrentlySpotlighted = spotlightState.spotlightedTeamId === teamId;
+                await apiFetch("/api/spotlight/team", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ spotlightedTeamId: isCurrentlySpotlighted ? null : teamId })
+                });
+                fetchData();
+            }
+
+            async function controlTimer(action, value) {
+                await apiFetch("/api/spotlight/timer", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action, value })
+                });
+                fetchData();
+            }
+            
+            async function clearFeedback() {
+                if(!confirm("Clear all feedback?")) return;
+                await apiFetch("/api/spotlight/clear-feedback", { method: "POST" });
+                fetchData();
+            }
+
+            function updateTimerDisplay() {
+                if (!spotlightState) return;
+                const statusEl = document.getElementById('timerStatus');
+                if (spotlightState.timerIsRunning) {
+                    const end = new Date(spotlightState.timerEndTime).getTime();
+                    const now = Date.now();
+                    const rem = Math.max(0, Math.floor((end - now)/1000));
+                    statusEl.textContent = `Running: ${rem}s left`;
+                    statusEl.style.color = "var(--success)";
+                } else {
+                    statusEl.textContent = `Paused / Ready: ${spotlightState.timerRemaining}s`;
+                    statusEl.style.color = "var(--text)";
+                }
+            }
+
+            function render() {
+                if (!spotlightState) return;
+
+                if (!isTyping) {
+                    textarea.value = (spotlightState.prompts || []).join("\n");
+                }
+
+                // Update prompt select options
+                if (!isSelectFocused) {
+                    const currentSelection = promptSelect.value;
+                    promptSelect.innerHTML = `<option value="" disabled ${!spotlightState.currentPrompt ? 'selected' : ''}>Select a prompt to display...</option>` + 
+                        (spotlightState.prompts || []).map(p => `<option value="${p.replace(/"/g, '&quot;')}" ${spotlightState.currentPrompt === p ? 'selected' : ''}>${p}</option>`).join("");
+                    if (!spotlightState.currentPrompt && currentSelection) promptSelect.value = currentSelection;
+                }
+
+                // Render teams
+                const teamGrid = document.getElementById("teamGrid");
+                teamGrid.innerHTML = Object.entries(teamsData).map(([id, team]) => {
+                    const isSpotlighted = spotlightState.spotlightedTeamId === String(team._id);
+                    return `
+                        <div class="team-card" style="${isSpotlighted ? 'border-color: var(--primary);' : ''}">
+                            <div class="team-header">
+                                <span class="team-name">${team.name}</span>
+                                <span class="status-badge ${isSpotlighted ? 'active' : ''}">${isSpotlighted ? 'SPOTLIGHTED' : (team.item ? 'Has Item' : 'Waiting')}</span>
+                            </div>
+                            <div class="controls-row">
+                                <button class="btn btn-sm" onclick="dispatchDeck('${id}', 'A')">Send Deck A</button>
+                                <button class="btn btn-sm" onclick="dispatchDeck('${id}', 'B')">Send Deck B</button>
+                                <button class="btn btn-sm" onclick="dispatchDeck('${id}', 'C')">Send Deck C</button>
+                            </div>
+                            <button class="btn ${isSpotlighted ? 'btn-danger' : 'btn-primary'} btn-sm" style="width: 100%;" onclick="toggleSpotlight('${id}')">
+                                ${isSpotlighted ? 'REMOVE SPOTLIGHT' : 'SPOTLIGHT TEAM'}
+                            </button>
+                        </div>
+                    `;
+                }).join("");
+                
+                // Render feedback
+                const feedbackList = document.getElementById("feedbackList");
+                feedbackList.innerHTML = (spotlightState.feedbacks || []).reverse().map(f => {
+                    return `
+                        <div class="feedback-item">
+                            <div style="font-weight: bold; margin-bottom: 0.5rem; color: var(--primary);">From: ${f.fromTeamName}</div>
+                            <div><span>Hesitated >3s:</span> ${f.fluency ? 'Yes' : 'No'}</div>
+                            <div><span>Guessed Structure:</span> ${f.structure || 'None'}</div>
+                            <div><span>Used all 3 starters:</span> ${f.completion ? 'Yes' : 'No'}</div>
+                            <div><span>Vocab:</span> ${f.vocabulary || '-'}</div>
+                        </div>
+                    `;
+                }).join("") || '<div style="color: #aaa; font-size: 0.8rem;">No feedback yet.</div>';
+
+                updateTimerDisplay();
+            }
+
+            const textarea = document.getElementById("promptsTextarea");
+            textarea.addEventListener("focusin", () => isTyping = true);
+            textarea.addEventListener("focusout", () => {
+                isTyping = false;
+                savePrompts();
+            });
+
+            let isSelectFocused = false;
+            const promptSelect = document.getElementById("promptSelect");
+            promptSelect.addEventListener("focus", () => isSelectFocused = true);
+            promptSelect.addEventListener("blur", () => isSelectFocused = false);
+
+            initApp();
+        </script>
+    </body>
+</html>
